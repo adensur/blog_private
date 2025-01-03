@@ -1,0 +1,1 @@
+wget https://huggingface.co/datasets/intfloat/simlm-msmarco/resolve/main/msmarco_bm25_official.zip
