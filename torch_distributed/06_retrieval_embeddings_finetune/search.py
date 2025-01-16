@@ -19,7 +19,8 @@ from transformers import (
     DataCollatorWithPadding,
     BatchEncoding
 )
-from lib import move_to_cuda, save_json_to_file, load_queries, load_qrels, load_msmarco_predictions, save_preds_to_msmarco_format, get_embeds, ScoredDoc, compute_mrr, trec_eval
+from model import MyModel
+from lib import move_to_cuda, save_json_to_file, load_queries, load_qrels, load_msmarco_predictions, save_preds_to_msmarco_format, ScoredDoc, compute_mrr, trec_eval
 
 
 
@@ -74,7 +75,7 @@ def _worker_encode_queries(gpu_idx: int, args: argparse.Namespace) -> Tuple:
     torch.cuda.set_device(gpu_idx)
 
     tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(args.model_name_or_path)
-    model = AutoModel.from_pretrained(args.model_name_or_path)
+    model = MyModel(args.model_name_or_path)
     model.eval()
     model.cuda()
 
@@ -95,7 +96,7 @@ def _worker_encode_queries(gpu_idx: int, args: argparse.Namespace) -> Tuple:
         batch_dict = move_to_cuda(batch_dict)
 
         with torch.cuda.amp.autocast() if args.fp16 else nullcontext():
-            embeds = get_embeds(model, batch_dict)
+            embeds = model.encode(batch_dict)
         encoded_embeds.append(embeds)
 
     query_embeds = torch.cat(encoded_embeds, dim=0)

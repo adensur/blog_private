@@ -5,13 +5,6 @@ import json
 import torch
 import pytrec_eval
 import tqdm
-def get_embeds(model, batch_dict):
-    preds = model(**batch_dict)
-    hidden_state = preds.last_hidden_state
-    embeds = hidden_state[:, 0]
-    embeds = F.normalize(embeds, dim=-1)
-    embeds = embeds.contiguous()
-    return embeds
 
 def move_to_cuda(sample):
     if len(sample) == 0:

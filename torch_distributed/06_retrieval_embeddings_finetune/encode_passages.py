@@ -5,7 +5,8 @@ import torch
 import torch.nn.functional as F
 from typing import List, Union, Optional, Tuple, Mapping, Dict
 
-from lib import get_embeds, move_to_cuda
+from lib import move_to_cuda
+from model import MyModel
 
 from contextlib import nullcontext
 from torch.utils.data import DataLoader
@@ -58,7 +59,7 @@ def _worker_encode_passages(gpu_idx: int, args):
     torch.cuda.set_device(gpu_idx)
 
     tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(args.model_name_or_path)
-    model = AutoModel.from_pretrained(args.model_name_or_path)
+    model = MyModel(args.model_name_or_path)
     model.eval()
     model.cuda()
 
@@ -79,7 +80,7 @@ def _worker_encode_passages(gpu_idx: int, args):
         batch_dict = move_to_cuda(batch_dict)
 
         with torch.cuda.amp.autocast() if args.fp16 else nullcontext():
-            embeds = get_embeds(model, batch_dict)
+            embeds = model.encode(batch_dict)
             
         encoded_embeds.append(embeds.cpu())
         num_encoded_docs += embeds.shape[0]
