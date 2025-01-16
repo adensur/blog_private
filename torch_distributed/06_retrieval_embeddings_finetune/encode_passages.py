@@ -99,6 +99,7 @@ def _worker_encode_passages(gpu_idx: int, args):
         out_path = _get_out_path(cur_shard_idx)
         concat_embeds = torch.cat(encoded_embeds, dim=0)
         print('GPU {} save {} embeds to {}'.format(gpu_idx, concat_embeds.shape[0], out_path))
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         torch.save(concat_embeds, out_path)
 
     print('Done computing score for worker {}'.format(gpu_idx))

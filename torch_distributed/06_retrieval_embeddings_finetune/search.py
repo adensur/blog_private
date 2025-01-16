@@ -135,6 +135,7 @@ def _worker_batch_search(gpu_idx: int, args: argparse.Namespace):
         psg_idx_offset += shard_psg_embed.shape[0]
 
     out_path = _get_topk_result_save_path(gpu_idx, args)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as writer:
         for query_id in query_id_to_text:
             for rank, (score, doc_id) in enumerate(query_id_to_topk[query_id]):
@@ -159,7 +160,9 @@ def _compute_and_save_metrics(worker_cnt: int, args: argparse.Namespace):
         all_metrics['mrr'] = compute_mrr(qrels=qrels, predictions=preds)
 
         print('{} trec metrics = {}'.format(args.search_split, json.dumps(all_metrics, ensure_ascii=False, indent=4)))
-        save_json_to_file(all_metrics, os.path.join(args.search_out_dir, 'metrics_{}.json'.format(args.search_split)))
+        output_path = os.path.join(args.search_out_dir, 'metrics_{}.json'.format(args.search_split))
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        save_json_to_file(all_metrics, output_path)
     else:
         print('No qrels found for {}'.format(args.search_split))
 
