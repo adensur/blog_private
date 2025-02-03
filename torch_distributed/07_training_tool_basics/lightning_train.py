@@ -9,8 +9,11 @@ import lightning as L
 from torch.utils.data import Dataset, DataLoader
 import json
 from tqdm import tqdm
-from transformers import AutoTokenizer, DataCollatorWithPadding
+from transformers import AutoTokenizer
 from lightning.pytorch.strategies import DDPStrategy
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import WandbLogger
+from lib import RestorableSampler
 
 from typing import Dict, List, Any, Tuple
 from functools import partial
@@ -33,7 +36,7 @@ class JsonlDataset(Dataset):
         return self.data[idx]
 
 
-def collate_fn(tokenizer, examples: List[Dict[str, Any]]):
+def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
     # Extract queries, positive and negative docs
     queries = [ex["query"] for ex in examples]
     pos_titles = [ex["pos_doc"][0] for ex in examples]
@@ -44,7 +47,7 @@ def collate_fn(tokenizer, examples: List[Dict[str, Any]]):
         queries,
         padding=True,
         truncation=True,
-        max_length=128,
+        max_length=args.q_max_len,
         return_tensors="pt"
     )
 
@@ -54,7 +57,7 @@ def collate_fn(tokenizer, examples: List[Dict[str, Any]]):
         text_pair=pos_texts,
         padding=True,
         truncation=True,
-        max_length=512,
+        max_length=args.p_max_len,
         return_tensors="pt"
     )
 
@@ -69,7 +72,7 @@ def collate_fn(tokenizer, examples: List[Dict[str, Any]]):
             text_pair=neg_texts,
             padding=True,
             truncation=True,
-            max_length=512,
+            max_length=args.p_max_len,
             return_tensors="pt"
         )
         neg_encodings_list.append(neg_encodings)
@@ -87,8 +90,22 @@ class MyLightningModule(L.LightningModule):
         self.args = args
         self.model = MyModel(args.model_name_or_path)
         self.model.train()
+        self.save_hyperparameters()
+        self.consumed_samples = 0
+        self.sampler = None
+        self.trainer = None
 
-    def training_step(self, batch, batch_idx):
+    def state_dict(self):
+        state = super().state_dict()
+        state['consumed_samples'] = self.consumed_samples
+        return state
+
+    def load_state_dict(self, state_dict):
+        if 'consumed_samples' in state_dict:
+            self.consumed_samples = state_dict.pop('consumed_samples')
+        super().load_state_dict(state_dict)
+
+    def common_step(self, batch):
         # Get query embeddings
         query_embeds = self.model.encode(batch["query"])
         
@@ -117,7 +134,22 @@ class MyLightningModule(L.LightningModule):
         # Compute loss
         loss = F.cross_entropy(scores, labels)
         
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        loss = self.common_step(batch)
+        # assume that last batch is always dropped
+        self.consumed_samples += len(batch["query"]["input_ids"]) * dist.get_world_size()
         self.log("train_loss", loss)
+        self.log("consumed_samples", self.consumed_samples)
+        # print("Rank: ", dist.get_rank(), "Consumed samples: ", self.consumed_samples)
+        if self.sampler is not None:
+            self.sampler.consumed_samples = self.consumed_samples
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        loss = self.common_step(batch)
+        self.log("val_loss", loss)
         return loss
 
     def full_contrastive_scores_and_labels(
@@ -172,32 +204,70 @@ def main():
     parser.add_argument('--num-nodes', type=int, default=1)
     parser.add_argument('--devices', type=int, default=8)
     parser.add_argument('--train_path', type=str, required=True)
+    parser.add_argument('--val_path', type=str, required=True)
     parser.add_argument('--model_name_or_path', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
+    parser.add_argument('--val_check_interval', type=int, default=5000)
+    parser.add_argument('--q_max_len', type=int, default=32)
+    parser.add_argument('--p_max_len', type=int, default=144)
+    parser.add_argument('--resume_from_checkpoint', type=str, default=None,
+                        help='Path to checkpoint to resume training from')
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
-    dataset = JsonlDataset(args.train_path)
+    train_dataset = JsonlDataset(args.train_path)
+    val_dataset = JsonlDataset(args.val_path)
     
+    # Load from checkpoint if specified, otherwise from model_name_or_path
+    if args.resume_from_checkpoint:
+        print("Restoring from checkpoint: ", args.resume_from_checkpoint)
+        module = MyLightningModule.load_from_checkpoint(args.resume_from_checkpoint, args=args)
+        print("Restored consumed samples: ", module.consumed_samples)
+    else:
+        module = MyLightningModule(args)
+
     train_loader = DataLoader(
-        dataset,
+        train_dataset,
         batch_size=args.batch_size,
-        shuffle=True,
-        collate_fn=partial(collate_fn, tokenizer),
+        sampler=RestorableSampler(train_dataset, module.consumed_samples),
+        collate_fn=partial(collate_fn, tokenizer, args),
+        num_workers=4,
+        pin_memory=True,
+        drop_last=True,
+    )
+
+    module.sampler = train_loader.sampler
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        collate_fn=partial(collate_fn, tokenizer, args),
         num_workers=4,
         pin_memory=True
     )
+
+    wandb_logger = WandbLogger(project="your_project_name")
 
     trainer = L.Trainer(
         max_epochs=args.epochs,
         max_steps=args.max_steps,
         strategy=DDPStrategy(find_unused_parameters=True), # otherwise lightning complains about unused params
         num_nodes=args.num_nodes,
-        devices=args.devices
+        devices=args.devices,
+        val_check_interval=args.val_check_interval,
+        callbacks=[ModelCheckpoint(
+            dirpath=args.output_dir,
+            save_top_k=-1,
+            every_n_train_steps=args.val_check_interval,
+            save_weights_only=False
+        )],
+        logger=wandb_logger
     )
 
-    module = MyLightningModule(args)
-    trainer.fit(module, train_dataloaders=train_loader)
+    module.trainer = trainer
+
+    trainer.fit(module, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     if dist.get_rank() == 0:
         print("Done training, saving model!")

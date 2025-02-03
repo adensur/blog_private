@@ -89,6 +89,7 @@ def _worker_encode_passages(gpu_idx: int, args):
             out_path = _get_out_path(cur_shard_idx)
             concat_embeds = torch.cat(encoded_embeds, dim=0)
             print('GPU {} save {} embeds to {}'.format(gpu_idx, concat_embeds.shape[0], out_path))
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
             torch.save(concat_embeds, out_path)
 
             cur_shard_idx += 1
@@ -126,7 +127,7 @@ if __name__ == '__main__':
     args.add_argument('--encode_save_dir', type=str, required=True)
     args.add_argument('--encode_batch_size', type=int, default=128)
     args.add_argument('--encode_shard_size', type=int, default=1000000)
-    args.add_argument('--p_max_len', type=int, default=512)
+    args.add_argument('--p_max_len', type=int, default=144)
     args.add_argument('--model_name_or_path', type=str, default='Luyu/co-Condenser-marco')
     args.add_argument('--fp16', action='store_true')
     args.add_argument('--dataloader_num_workers', type=int, default=16)

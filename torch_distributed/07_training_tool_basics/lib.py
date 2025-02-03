@@ -5,7 +5,9 @@ import json
 import torch
 import pytrec_eval
 import tqdm
-
+import numpy as np
+from torch.utils.data import Sampler
+import torch.distributed as dist
 def move_to_cuda(sample):
     if len(sample) == 0:
         return {}
@@ -203,3 +205,34 @@ def save_preds_to_msmarco_format(preds: Dict[str, List[ScoredDoc]], out_path: st
             for idx, scored_doc in enumerate(preds[qid]):
                 writer.write('{}\t{}\t{}\t{}\n'.format(qid, scored_doc.pid, idx + 1, round(scored_doc.score, 3)))
     print('Successfully saved to {}'.format(out_path))
+
+class RestorableSampler(Sampler):
+    def __init__(self, data_source, consumed_samples=0, batch_size=32):
+        self.data_source = data_source
+        self.consumed_samples = consumed_samples
+        self.batch_size = batch_size
+
+    def get_data_size(self):
+        return len(self.data_source) - (len(self.data_source) % (self.batch_size * dist.get_world_size()))
+
+    def __iter__(self):
+        data_size = self.get_data_size()
+        # Calculate current epoch and offset within epoch
+        epoch = self.consumed_samples // data_size
+        offset = self.consumed_samples % data_size
+        print(f"RestorableSampler consumed_samples: {self.consumed_samples}, epoch: {epoch}, offset: {offset}")
+
+        # Set random seed based on epoch for consistent shuffling
+        rng = np.random.RandomState(epoch)
+        indices = list(range(data_size))
+        rng.shuffle(indices)
+
+        # Yield remaining indices in current epoch starting from offset
+        for idx in indices[offset:]:
+            yield idx
+
+        print(f"RestorableSampler epoch {epoch} done. Consumed samples: {self.consumed_samples}")
+
+    def __len__(self):
+        # Return remaining samples in current epoch
+        return self.get_data_size() - (self.consumed_samples % self.get_data_size())
