@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, LinearLR
 import torch.distributed as dist
 import lightning as L
 from torch.utils.data import Dataset, DataLoader
@@ -14,11 +14,25 @@ from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
 from lib import RestorableSampler
-
-from typing import Dict, List, Any, Tuple
+from torch.optim.lr_scheduler import LambdaLR
+from typing import Dict, List, Any, Tuple, Optional
 from functools import partial
+from torch.nn.utils import clip_grad_norm_
 
 from model import MyModel
+
+
+def dist_gather_tensor(t: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
+    if t is None:
+        return None
+
+    t = t.contiguous()
+    all_tensors = [torch.empty_like(t) for _ in range(dist.get_world_size())]
+    dist.all_gather(all_tensors, t)
+
+    all_tensors[dist.get_rank()] = t
+    all_tensors = torch.cat(all_tensors, dim=0)
+    return all_tensors
 
 
 class JsonlDataset(Dataset):
@@ -109,22 +123,25 @@ class MyLightningModule(L.LightningModule):
         # Get query embeddings
         query_embeds = self.model.encode(batch["query"])
         
-        # Combine positive and negative docs into one batch
-        all_docs = [batch["pos_doc"]]
-        for neg_docs in batch["neg_docs"]:
-            all_docs.append(neg_docs)
+        # Get positive doc embeddings
+        pos_doc_embeds = self.model.encode(batch["pos_doc"])
         
-        # Get all doc embeddings in one forward pass
-        all_doc_embeds = []
-        for docs in all_docs:
-            doc_embeds = self.model.encode(docs)
-            all_doc_embeds.append(doc_embeds)
-        key_embeds = torch.cat(all_doc_embeds, dim=0)
+        # Gather query and positive embeddings from all devices
+        all_docs = [pos_doc_embeds]  # Start with gathered positives
+        # Combine positive and negative docs into one batch
+        for neg_docs in batch["neg_docs"]:
+            neg_embeds = self.model.encode(neg_docs)
+            all_docs.append(neg_embeds)
+        
+        # Concatenate all doc embeddings
+        key_embeds = torch.cat(all_docs, dim=0)
 
+        all_query_embeds = dist_gather_tensor(query_embeds)
+        all_key_embeds = dist_gather_tensor(key_embeds)
         # Compute scores and labels
         scores, labels = self.full_contrastive_scores_and_labels(
-            query=query_embeds,
-            key=key_embeds,
+            query=all_query_embeds,
+            key=all_key_embeds,
             use_all_pairs=True
         )
         
@@ -133,19 +150,34 @@ class MyLightningModule(L.LightningModule):
         
         # Compute loss
         loss = F.cross_entropy(scores, labels)
+
+        # scale loss by number of devices
+        # loss *= self.args.world_size
         
         return loss
 
     def training_step(self, batch, batch_idx):
         loss = self.common_step(batch)
         # assume that last batch is always dropped
-        self.consumed_samples += len(batch["query"]["input_ids"]) * dist.get_world_size()
+        self.consumed_samples += len(batch["query"]["input_ids"]) * self.args.world_size
         self.log("train_loss", loss)
         self.log("consumed_samples", self.consumed_samples)
         # print("Rank: ", dist.get_rank(), "Consumed samples: ", self.consumed_samples)
         if self.sampler is not None:
             self.sampler.consumed_samples = self.consumed_samples
+        # Log current learning rate
+        current_lr = self.optimizers().param_groups[0]['lr']
+        self.log("learning_rate", current_lr)
+        
         return loss
+
+    def on_before_optimizer_step(self, optimizer):
+        # Calculate and log gradient norm before clipping
+        grad_norm = torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in self.parameters() if p.grad is not None]))
+        self.log("grad_norm", grad_norm)
+        
+        # Clip gradients
+        clip_grad_norm_(self.parameters(), max_norm=1.0)
 
     def validation_step(self, batch, batch_idx):
         loss = self.common_step(batch)
@@ -188,19 +220,27 @@ class MyLightningModule(L.LightningModule):
         return scores, labels
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr)
-        scheduler = StepLR(optimizer, step_size=1, gamma=self.args.gamma)
-        return [optimizer], [scheduler]
+        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr, weight_decay=0.0)
+        
+        def lr_lambda(current_step: int):
+            if current_step < self.args.warmup_steps:
+                # Linear warmup from lr/2 to lr
+                return 0.5 + (current_step * 0.5 / self.args.warmup_steps)
+            else:
+                # Linear decay from lr to 0
+                return max(0.0, (self.args.max_steps - current_step) / (self.args.max_steps - self.args.warmup_steps))
+        
+        scheduler = LambdaLR(optimizer, lr_lambda)
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 
 
 def main():
     parser = argparse.ArgumentParser(description='Contrastive Learning')
-    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=2e-5)
-    parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--temperature', type=float, default=0.1)
+    parser.add_argument('--temperature', type=float, default=0.02)
     parser.add_argument('--num-nodes', type=int, default=1)
     parser.add_argument('--devices', type=int, default=8)
     parser.add_argument('--train_path', type=str, required=True)
@@ -212,10 +252,17 @@ def main():
     parser.add_argument('--p_max_len', type=int, default=144)
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='Path to checkpoint to resume training from')
+    parser.add_argument('--warmup_steps', type=int, default=1000)
+    parser.add_argument("--use-restorable-sampler", action="store_true")
+    parser.add_argument("--shuffle", action="store_true")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
     train_dataset = JsonlDataset(args.train_path)
+    args.world_size = args.num_nodes * args.devices
+    args.steps_per_epoch = len(train_dataset) // args.batch_size // args.world_size
+    if args.max_steps == -1:
+        args.max_steps = args.steps_per_epoch * args.epochs
     val_dataset = JsonlDataset(args.val_path)
     
     # Load from checkpoint if specified, otherwise from model_name_or_path
@@ -229,7 +276,8 @@ def main():
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
-        sampler=RestorableSampler(train_dataset, module.consumed_samples),
+        sampler=RestorableSampler(train_dataset, module.consumed_samples) if args.use_restorable_sampler else None,
+        shuffle=args.shuffle,
         collate_fn=partial(collate_fn, tokenizer, args),
         num_workers=4,
         pin_memory=True,
