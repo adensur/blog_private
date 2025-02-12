@@ -37,6 +37,7 @@ def _get_all_shards_path(args: argparse.Namespace) -> List[str]:
 
 
 def _get_topk_result_save_path(worker_idx: int, args: argparse.Namespace) -> str:
+    os.makedirs(args.search_out_dir, exist_ok=True)
     return '{}/top{}_{}_{}.txt'.format(args.search_out_dir, args.search_topk, args.search_split, worker_idx)
 
 
@@ -150,6 +151,7 @@ def _compute_and_save_metrics(worker_cnt: int, args: argparse.Namespace):
         path = _get_topk_result_save_path(worker_idx, args)
         preds.update(load_msmarco_predictions(path))
     out_path = os.path.join(args.search_out_dir, '{}.msmarco.txt'.format(args.search_split))
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     save_preds_to_msmarco_format(preds, out_path)
     print('Merge done: save {} predictions to {}'.format(len(preds), out_path))
 
@@ -204,4 +206,5 @@ if __name__ == '__main__':
     args.add_argument('--search_topk', type=int, default=1000)
     args.add_argument('--search_out_dir', type=str, required=True)
     args = args.parse_args()
+    os.makedirs(args.search_out_dir, exist_ok=True)
     _batch_search_queries(args)

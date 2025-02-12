@@ -42,7 +42,9 @@ def _psg_transform_func(tokenizer: PreTrainedTokenizerFast, args,
 @torch.no_grad()
 def _worker_encode_passages(gpu_idx: int, args):
     def _get_out_path(shard_idx: int = 0) -> str:
-        return '{}/shard_{}_{}'.format(args.encode_save_dir, gpu_idx, shard_idx)
+        path = '{}/shard_{}_{}'.format(args.encode_save_dir, gpu_idx, shard_idx)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
 
     if os.path.exists(_get_out_path(0)):
         print('{} already exists, will skip encoding'.format(_get_out_path(0)))
@@ -99,7 +101,6 @@ def _worker_encode_passages(gpu_idx: int, args):
         out_path = _get_out_path(cur_shard_idx)
         concat_embeds = torch.cat(encoded_embeds, dim=0)
         print('GPU {} save {} embeds to {}'.format(gpu_idx, concat_embeds.shape[0], out_path))
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         torch.save(concat_embeds, out_path)
 
     print('Done computing score for worker {}'.format(gpu_idx))
@@ -111,6 +112,8 @@ def _batch_encode_passages(args: argparse.Namespace):
     if gpu_count == 0:
         print('No gpu available')
         return
+
+    os.makedirs(args.encode_save_dir, exist_ok=True)
 
     print('Use {} gpus'.format(gpu_count))
     if not args.dry_run:
