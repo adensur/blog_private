@@ -144,7 +144,7 @@ def main():
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--temperature', type=float, default=0.1)
+    parser.add_argument('--temperature', type=float, default=0.02)
     parser.add_argument('--num-nodes', type=int, default=1)
     parser.add_argument('--devices', type=int, default=8)
     parser.add_argument('--train_path', type=str, required=True)
