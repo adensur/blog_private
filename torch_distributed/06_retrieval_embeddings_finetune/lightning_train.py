@@ -34,10 +34,8 @@ class JsonlDataset(Dataset):
 
 
 def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
-    # Extract queries and all docs (positive first, then negatives)
     queries = [ex["query"] for ex in examples]
     
-    # Combine positive and negative docs for each example
     all_docs = []
     for ex in examples:
         docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
@@ -76,11 +74,9 @@ class MyLightningModule(L.LightningModule):
         self.model.train()
 
     def training_step(self, batch, batch_idx):
-        # Get query embeddings
         query_embeds = self.model.encode(batch["query"])
         doc_embeds = self.model.encode(batch["docs"])
 
-        # Compute scores and labels
         scores, labels = self.full_contrastive_scores_and_labels(
             query=query_embeds,
             key=doc_embeds,

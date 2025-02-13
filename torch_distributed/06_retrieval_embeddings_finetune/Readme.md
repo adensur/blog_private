@@ -92,51 +92,36 @@ Each row has a query, one positive doc, and a fixed number of negatives (15, as 
 
 We tokenize in the data collator (to benefit from HF tokenizers' batching logic):   
 ```python
-def collate_fn(tokenizer, examples: List[Dict[str, Any]]):
-    # Extract queries, positive and negative docs
+def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
     queries = [ex["query"] for ex in examples]
-    pos_titles = [ex["pos_doc"][0] for ex in examples]
-    pos_texts = [ex["pos_doc"][1] for ex in examples]
     
-    # Tokenize queries
+    all_docs = []
+    for ex in examples:
+        docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
+        all_docs.extend([(doc[0], doc[1]) for doc in docs])  # (title, text) pairs
+    
+    # Tokenize all queries in one batch
     query_encodings = tokenizer(
         queries,
         padding=True,
         truncation=True,
-        max_length=128,
+        max_length=args.q_max_len,
         return_tensors="pt"
     )
 
-    # Tokenize positive docs with title+text pairs
-    pos_doc_encodings = tokenizer(
-        pos_titles,
-        text_pair=pos_texts,
+    # Tokenize all docs in one batch
+    doc_encodings = tokenizer(
+        [doc[0] for doc in all_docs],  # titles
+        text_pair=[doc[1] for doc in all_docs],  # texts
         padding=True,
         truncation=True,
-        max_length=512,
+        max_length=args.p_max_len,
         return_tensors="pt"
     )
-
-    # Process negative docs
-    neg_encodings_list = []
-    for ex in examples:
-        neg_titles = [neg[0] for neg in ex["neg_doc"]]
-        neg_texts = [neg[1] for neg in ex["neg_doc"]]
-        
-        neg_encodings = tokenizer(
-            neg_titles,
-            text_pair=neg_texts,
-            padding=True,
-            truncation=True,
-            max_length=512,
-            return_tensors="pt"
-        )
-        neg_encodings_list.append(neg_encodings)
 
     return {
         "query": query_encodings,
-        "pos_doc": pos_doc_encodings,
-        "neg_docs": neg_encodings_list
+        "docs": doc_encodings
     }
 ```
 ## Model inference and loss
@@ -150,25 +135,12 @@ class MyLightningModule(L.LightningModule):
         self.model.train()
 
     def training_step(self, batch, batch_idx):
-        # Get query embeddings
         query_embeds = self.model.encode(batch["query"])
-        
-        # Combine positive and negative docs into one batch
-        all_docs = [batch["pos_doc"]]
-        for neg_docs in batch["neg_docs"]:
-            all_docs.append(neg_docs)
-        
-        # Get all doc embeddings in one forward pass
-        all_doc_embeds = []
-        for docs in all_docs:
-            doc_embeds = self.model.encode(docs)
-            all_doc_embeds.append(doc_embeds)
-        key_embeds = torch.cat(all_doc_embeds, dim=0)
+        doc_embeds = self.model.encode(batch["docs"])
 
-        # Compute scores and labels
         scores, labels = self.full_contrastive_scores_and_labels(
             query=query_embeds,
-            key=key_embeds,
+            key=doc_embeds,
             use_all_pairs=True
         )
         
@@ -221,7 +193,7 @@ class MyLightningModule(L.LightningModule):
         scheduler = StepLR(optimizer, step_size=1, gamma=self.args.gamma)
         return [optimizer], [scheduler]
 ```
-`full_contrastive_scores_and_labels` is copied from simlm as well. Basic logic is that we assign query,pos pair score as 1.0, and query,neg pair scores as 0.0. In addition, we add extra exampes:   
+`full_contrastive_scores_and_labels` is copied from `simlm` as well. Basic logic is that we assign query,pos pair score as 1.0, and query,neg pair scores as 0.0. In addition, we add extra exampes:   
 - "in batch negatives" - positives and negatives for one query are added as negatives for other queries
 - doc-to-doc negatives - one query's positive multiplied by another query's positive is a negative (one positive acts as a "query" in this case)
 - query-to-query negatives - one query multiplied by another query is a negative
@@ -232,17 +204,19 @@ We scale loss by temperature, which is a constant hyperparam for now, though we 
 ```python
 def main():
     parser = argparse.ArgumentParser(description='Contrastive Learning')
-    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--temperature', type=float, default=0.1)
+    parser.add_argument('--temperature', type=float, default=0.02)
     parser.add_argument('--num-nodes', type=int, default=1)
     parser.add_argument('--devices', type=int, default=8)
     parser.add_argument('--train_path', type=str, required=True)
     parser.add_argument('--model_name_or_path', type=str, required=True)
     parser.add_argument('--output_dir', type=str, required=True)
+    parser.add_argument('--q_max_len', type=int, default=32)
+    parser.add_argument('--p_max_len', type=int, default=144)
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
@@ -252,7 +226,7 @@ def main():
         dataset,
         batch_size=args.batch_size,
         shuffle=True,
-        collate_fn=partial(collate_fn, tokenizer),
+        collate_fn=partial(collate_fn, tokenizer, args),
         num_workers=4,
         pin_memory=True
     )
@@ -275,15 +249,17 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 ```
 Training code is almost unchanged. I had to add `find_unused_parameters=True` to `DDPStrategy`, otherwise lightning complains about unused params.   
 
 This is how to run it, and then do evaluation:
 ```bash
-export MY_RUN_NAME=train_v1
-python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --temperature 0.02
+export MY_RUN_NAME=train_v2
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02
 python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
 ```
-In my case, this configuration yielded `"NDCG@10": 0.22547`, much lower than simlm version, though amount of data and main params are the same.   
+In my case, this configuration yielded `"NDCG@10": 0.42248`, a bit lower than simlm version, though amount of data and main params are the same.   
 
 In the next few chapters, we will add missing functionality to the training script and see how that impacts the results.
