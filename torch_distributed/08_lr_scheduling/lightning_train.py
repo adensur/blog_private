@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR, LinearLR
+from torch.optim.lr_scheduler import StepLR
 import torch.distributed as dist
 import lightning as L
 from torch.utils.data import Dataset, DataLoader
@@ -14,10 +14,8 @@ from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
 from lib import RestorableSampler
-from torch.optim.lr_scheduler import LambdaLR
 from typing import Dict, List, Any, Tuple, Optional
 from functools import partial
-from torch.nn.utils import clip_grad_norm_
 
 from model import MyModel
 
@@ -141,19 +139,8 @@ class MyLightningModule(L.LightningModule):
         # print("Rank: ", dist.get_rank(), "Consumed samples: ", self.consumed_samples)
         if self.sampler is not None:
             self.sampler.consumed_samples = self.consumed_samples
-        # Log current learning rate
-        current_lr = self.optimizers().param_groups[0]['lr']
-        self.log("learning_rate", current_lr)
         
         return loss
-
-    def on_before_optimizer_step(self, optimizer):
-        # Calculate and log gradient norm before clipping
-        grad_norm = torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in self.parameters() if p.grad is not None]))
-        self.log("grad_norm", grad_norm)
-        
-        # Clip gradients
-        clip_grad_norm_(self.parameters(), max_norm=1.0)
 
     def validation_step(self, batch, batch_idx):
         loss = self.common_step(batch)
@@ -196,18 +183,9 @@ class MyLightningModule(L.LightningModule):
         return scores, labels
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr, weight_decay=0.0)
-        
-        def lr_lambda(current_step: int):
-            if current_step < self.args.warmup_steps:
-                # Linear warmup from lr/2 to lr
-                return 0.5 + (current_step * 0.5 / self.args.warmup_steps)
-            else:
-                # Linear decay from lr to 0
-                return max(0.0, (self.args.max_steps - current_step) / (self.args.max_steps - self.args.warmup_steps))
-        
-        scheduler = LambdaLR(optimizer, lr_lambda)
-        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
+        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr)
+        scheduler = StepLR(optimizer, step_size=1, gamma=self.args.gamma)
+        return [optimizer], [scheduler]
 
 
 def main():
@@ -216,6 +194,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=2e-5)
+    parser.add_argument('--gamma', type=float, default=0.9)
     parser.add_argument('--temperature', type=float, default=0.02)
     parser.add_argument('--num-nodes', type=int, default=1)
     parser.add_argument('--devices', type=int, default=8)
@@ -228,17 +207,11 @@ def main():
     parser.add_argument('--p_max_len', type=int, default=144)
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='Path to checkpoint to resume training from')
-    parser.add_argument('--warmup_steps', type=int, default=1000)
-    parser.add_argument("--use-restorable-sampler", action="store_true")
-    parser.add_argument("--shuffle", action="store_true")
+    parser.add_argument("--use_restorable_sampler", action="store_true")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
     train_dataset = JsonlDataset(args.train_path)
-    args.world_size = args.num_nodes * args.devices
-    args.steps_per_epoch = len(train_dataset) // args.batch_size // args.world_size
-    if args.max_steps == -1:
-        args.max_steps = args.steps_per_epoch * args.epochs
     val_dataset = JsonlDataset(args.val_path)
     
     # Load from checkpoint if specified, otherwise from model_name_or_path
@@ -253,7 +226,7 @@ def main():
         train_dataset,
         batch_size=args.batch_size,
         sampler=RestorableSampler(train_dataset, module.consumed_samples) if args.use_restorable_sampler else None,
-        shuffle=args.shuffle,
+        shuffle=False if args.use_restorable_sampler else True,
         collate_fn=partial(collate_fn, tokenizer, args),
         num_workers=4,
         pin_memory=True,
