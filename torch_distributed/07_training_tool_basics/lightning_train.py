@@ -37,12 +37,16 @@ class JsonlDataset(Dataset):
 
 
 def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
-    # Extract queries, positive and negative docs
+    # Extract queries and all docs (positive first, then negatives)
     queries = [ex["query"] for ex in examples]
-    pos_titles = [ex["pos_doc"][0] for ex in examples]
-    pos_texts = [ex["pos_doc"][1] for ex in examples]
     
-    # Tokenize queries
+    # Combine positive and negative docs for each example
+    all_docs = []
+    for ex in examples:
+        docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
+        all_docs.extend([(doc[0], doc[1]) for doc in docs])  # (title, text) pairs
+    
+    # Tokenize all queries in one batch
     query_encodings = tokenizer(
         queries,
         padding=True,
@@ -51,36 +55,19 @@ def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
         return_tensors="pt"
     )
 
-    # Tokenize positive docs with title+text pairs
-    pos_doc_encodings = tokenizer(
-        pos_titles,
-        text_pair=pos_texts,
+    # Tokenize all docs in one batch
+    doc_encodings = tokenizer(
+        [doc[0] for doc in all_docs],  # titles
+        text_pair=[doc[1] for doc in all_docs],  # texts
         padding=True,
         truncation=True,
         max_length=args.p_max_len,
         return_tensors="pt"
     )
 
-    # Process negative docs
-    neg_encodings_list = []
-    for ex in examples:
-        neg_titles = [neg[0] for neg in ex["neg_doc"]]
-        neg_texts = [neg[1] for neg in ex["neg_doc"]]
-        
-        neg_encodings = tokenizer(
-            neg_titles,
-            text_pair=neg_texts,
-            padding=True,
-            truncation=True,
-            max_length=args.p_max_len,
-            return_tensors="pt"
-        )
-        neg_encodings_list.append(neg_encodings)
-
     return {
         "query": query_encodings,
-        "pos_doc": pos_doc_encodings,
-        "neg_docs": neg_encodings_list
+        "docs": doc_encodings
     }
 
 
@@ -106,25 +93,16 @@ class MyLightningModule(L.LightningModule):
         super().load_state_dict(state_dict)
 
     def common_step(self, batch):
-        # Get query embeddings
+       # Get query embeddings for all queries in one forward pass
         query_embeds = self.model.encode(batch["query"])
         
-        # Combine positive and negative docs into one batch
-        all_docs = [batch["pos_doc"]]
-        for neg_docs in batch["neg_docs"]:
-            all_docs.append(neg_docs)
-        
         # Get all doc embeddings in one forward pass
-        all_doc_embeds = []
-        for docs in all_docs:
-            doc_embeds = self.model.encode(docs)
-            all_doc_embeds.append(doc_embeds)
-        key_embeds = torch.cat(all_doc_embeds, dim=0)
+        doc_embeds = self.model.encode(batch["docs"])
 
         # Compute scores and labels
         scores, labels = self.full_contrastive_scores_and_labels(
             query=query_embeds,
-            key=key_embeds,
+            key=doc_embeds,
             use_all_pairs=True
         )
         
@@ -200,7 +178,7 @@ def main():
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=2e-5)
     parser.add_argument('--gamma', type=float, default=0.9)
-    parser.add_argument('--temperature', type=float, default=0.1)
+    parser.add_argument('--temperature', type=float, default=0.02)
     parser.add_argument('--num-nodes', type=int, default=1)
     parser.add_argument('--devices', type=int, default=8)
     parser.add_argument('--train_path', type=str, required=True)
@@ -212,6 +190,7 @@ def main():
     parser.add_argument('--p_max_len', type=int, default=144)
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='Path to checkpoint to resume training from')
+    parser.add_argument("--use_restorable_sampler", action="store_true")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
@@ -229,7 +208,8 @@ def main():
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
-        sampler=RestorableSampler(train_dataset, module.consumed_samples),
+        sampler=RestorableSampler(train_dataset, module.consumed_samples) if args.use_restorable_sampler else None,
+        shuffle=False if args.use_restorable_sampler else True,
         collate_fn=partial(collate_fn, tokenizer, args),
         num_workers=4,
         pin_memory=True,
