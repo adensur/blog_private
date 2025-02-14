@@ -209,6 +209,7 @@ def main():
                         help='Path to checkpoint to resume training from')
     parser.add_argument("--use_restorable_sampler", action="store_true")
     args = parser.parse_args()
+    args.world_size = args.num_nodes * args.devices
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
     train_dataset = JsonlDataset(args.train_path)
