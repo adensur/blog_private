@@ -173,7 +173,7 @@ class MyLightningModule(L.LightningModule):
 
 def main():
     parser = argparse.ArgumentParser(description='Contrastive Learning')
-    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--lr', type=float, default=2e-5)
