@@ -15,8 +15,10 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
 from lib import RestorableSampler
 from typing import Dict, List, Any, Tuple, Optional
+from torch.optim.lr_scheduler import LambdaLR
 from functools import partial
-
+from torch.nn.utils import clip_grad_norm_
+import random
 from model import MyModel
 
 
@@ -55,7 +57,9 @@ def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
     # Combine positive and negative docs for each example
     all_docs = []
     for ex in examples:
-        docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
+        pos_doc = random.choice(ex["pos_docs"])  # Take random positive doc
+        neg_docs = random.sample(ex["neg_docs"], args.train_n_passages - 1)  # Take n-1 random negative docs
+        docs = [pos_doc] + neg_docs  # Positive doc first, then negatives
         all_docs.extend([(doc[0], doc[1]) for doc in docs])  # (title, text) pairs
     
     # Tokenize all queries in one batch
@@ -127,6 +131,7 @@ class MyLightningModule(L.LightningModule):
         
         # Compute loss
         loss = F.cross_entropy(scores, labels)
+        loss *= self.args.world_size if self.args.loss_scale <= 0 else self.args.loss_scale
         
         return loss
 
@@ -139,13 +144,23 @@ class MyLightningModule(L.LightningModule):
         # print("Rank: ", dist.get_rank(), "Consumed samples: ", self.consumed_samples)
         if self.sampler is not None:
             self.sampler.consumed_samples = self.consumed_samples
-        
+        current_lr = self.optimizers().param_groups[0]['lr']
+        self.log("learning_rate", current_lr)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss = self.common_step(batch)
         self.log("val_loss", loss)
         return loss
+
+    def on_before_optimizer_step(self, optimizer):
+        # Calculate and log gradient norm before clipping
+        grad_norm = torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in self.parameters() if p.grad is not None]))
+        self.log("grad_norm", grad_norm)
+        
+        # Clip gradients
+        if self.args.max_grad_norm is not None:
+            clip_grad_norm_(self.parameters(), max_norm=self.args.max_grad_norm)
 
     def full_contrastive_scores_and_labels(
             self,
@@ -183,9 +198,19 @@ class MyLightningModule(L.LightningModule):
         return scores, labels
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr)
-        scheduler = StepLR(optimizer, step_size=1, gamma=self.args.gamma)
-        return [optimizer], [scheduler]
+        optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
+        
+        def lr_lambda(current_step: int):
+            if current_step < self.args.warmup_steps:
+                # Linear warmup from lr/2 to lr
+                return 0.5 + (current_step * 0.5 / self.args.warmup_steps)
+            else:
+                # Linear decay from lr to 0
+                return max(0.0, (self.args.max_steps - current_step) / (self.args.max_steps - self.args.warmup_steps))
+        
+        scheduler = LambdaLR(optimizer, lr_lambda)
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
+
 
 
 def main():
@@ -208,12 +233,20 @@ def main():
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='Path to checkpoint to resume training from')
     parser.add_argument("--use_restorable_sampler", action="store_true")
+    parser.add_argument("--weight_decay", type=float, default=0.0)
+    parser.add_argument('--warmup_steps', type=int, default=1000)
+    parser.add_argument('--max_grad_norm', type=float, default=None)
+    parser.add_argument("--loss_scale", type=float, default=1.0, help="negative to scale by world size")
+    parser.add_argument("--train_n_passages", type=int, default=16, help="Number of passages to train on. 1 positive, n-1 negatives")
     args = parser.parse_args()
     args.world_size = args.num_nodes * args.devices
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
     train_dataset = JsonlDataset(args.train_path)
     val_dataset = JsonlDataset(args.val_path)
+    args.steps_per_epoch = len(train_dataset) // args.batch_size // args.world_size
+    if args.max_steps == -1:
+        args.max_steps = args.steps_per_epoch * args.epochs
     
     # Load from checkpoint if specified, otherwise from model_name_or_path
     if args.resume_from_checkpoint:
