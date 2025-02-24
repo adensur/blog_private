@@ -11,6 +11,7 @@ import json
 from tqdm import tqdm
 from transformers import AutoTokenizer, DataCollatorWithPadding
 from lightning.pytorch.strategies import DDPStrategy
+import random
 
 from typing import Dict, List, Any, Tuple
 from functools import partial
@@ -34,11 +35,15 @@ class JsonlDataset(Dataset):
 
 
 def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
+    # Extract queries and all docs (positive first, then negatives)
     queries = [ex["query"] for ex in examples]
     
+    # Combine positive and negative docs for each example
     all_docs = []
     for ex in examples:
-        docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
+        pos_doc = random.choice(ex["pos_docs"])  # Take random positive doc
+        neg_docs = random.sample(ex["neg_docs"], args.train_n_passages - 1)  # Take n-1 random negative docs
+        docs = [pos_doc] + neg_docs  # Positive doc first, then negatives
         all_docs.extend([(doc[0], doc[1]) for doc in docs])  # (title, text) pairs
     
     # Tokenize all queries in one batch
@@ -148,6 +153,7 @@ def main():
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--q_max_len', type=int, default=32)
     parser.add_argument('--p_max_len', type=int, default=144)
+    parser.add_argument("--train_n_passages", type=int, default=16, help="Number of passages to train on. 1 positive, n-1 negatives")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
