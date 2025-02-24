@@ -70,12 +70,14 @@ Each json line now contains data like this:
 ```
 {
     "query": "what are some tissues found in the skin",
-    "pos_doc":
+    "pos_docs":
     [
-        "-",
-        "Areolar Tissue. holds organs and tissue fluid in place, ..."
+        [
+            "Areolar Tissue",
+            "Areolar Tissue. holds organs and tissue fluid in place, ..."
+        ],
     ],
-    "neg_doc":
+    "neg_docs":
     [
         [
             "Vaginal Prolapse",
@@ -88,16 +90,20 @@ Each json line now contains data like this:
     ]
 }
 ```
-Each row has a query, one positive doc, and a fixed number of negatives (15, as is the case for simlm training). Each doc contains title and text, as separate fields. Some models, like `intfloat/simlm-base-msmarco-finetuned`, expects them separately, and will generate different tokentype embeddings for them. Some, like `bge-m3`, will just use single concatenated field.  
+Each row has a query and some positive and negative docs. Each doc contains title and text, as separate fields. Some models, like `intfloat/simlm-base-msmarco-finetuned`, expects them separately, and will generate different tokentype embeddings for them. Some, like `bge-m3`, will just use single concatenated field.  
 
 We tokenize in the data collator (to benefit from HF tokenizers' batching logic):   
 ```python
 def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
+    # Extract queries and all docs (positive first, then negatives)
     queries = [ex["query"] for ex in examples]
     
+    # Combine positive and negative docs for each example
     all_docs = []
     for ex in examples:
-        docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
+        pos_doc = random.choice(ex["pos_docs"])  # Take random positive doc
+        neg_docs = random.sample(ex["neg_docs"], args.train_n_passages - 1)  # Take n-1 random negative docs
+        docs = [pos_doc] + neg_docs  # Positive doc first, then negatives
         all_docs.extend([(doc[0], doc[1]) for doc in docs])  # (title, text) pairs
     
     # Tokenize all queries in one batch
@@ -124,6 +130,7 @@ def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
         "docs": doc_encodings
     }
 ```
+We also select a single positive randomly, and n-1 random negatives, where n-1 (`train_n_passages`) is a hyperparam. Our further code relies on the shape of each tensor to be the same on every batch, so we will cut off some negatives if needed. Random sampling makes sure that we will use different positives and negatives in each epoch, which helps a bit.
 ## Model inference and loss
 Here is how our lightning module code looks like:  
 ```python
