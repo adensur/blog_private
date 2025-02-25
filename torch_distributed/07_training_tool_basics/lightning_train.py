@@ -14,6 +14,7 @@ from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
 from lib import RestorableSampler
+import random
 
 from typing import Dict, List, Any, Tuple
 from functools import partial
@@ -43,7 +44,9 @@ def collate_fn(tokenizer, args, examples: List[Dict[str, Any]]):
     # Combine positive and negative docs for each example
     all_docs = []
     for ex in examples:
-        docs = [ex["pos_doc"]] + ex["neg_doc"]  # Positive doc first, then negatives
+        pos_doc = random.choice(ex["pos_docs"])  # Take random positive doc
+        neg_docs = random.sample(ex["neg_docs"], args.train_n_passages - 1)  # Take n-1 random negative docs
+        docs = [pos_doc] + neg_docs  # Positive doc first, then negatives
         all_docs.extend([(doc[0], doc[1]) for doc in docs])  # (title, text) pairs
     
     # Tokenize all queries in one batch
@@ -191,6 +194,7 @@ def main():
     parser.add_argument('--resume_from_checkpoint', type=str, default=None,
                         help='Path to checkpoint to resume training from')
     parser.add_argument("--use_restorable_sampler", action="store_true")
+    parser.add_argument("--train_n_passages", type=int, default=16, help="Number of passages to train on. 1 positive, n-1 negatives")
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)

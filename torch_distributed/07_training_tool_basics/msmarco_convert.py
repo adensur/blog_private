@@ -14,14 +14,17 @@ def _slice_with_mod(elements: List, offset: int, cnt: int) -> List:
 def convert_example(example: dict, corpus: Dataset) -> dict:
     result = {}
     result["query"] = example["query"]
-    pos_docid = example["positives"]["doc_id"]
-    pos_contents = corpus[int(pos_docid[0])]["contents"]
-    pos_title = corpus[int(pos_docid[0])]["title"]
-    result["pos_doc"] = (pos_title, pos_contents)
-    neg_docids = example["negatives"]["doc_id"][:15]
+    pos_docids = example["positives"]["doc_id"]
+    neg_docids = example["negatives"]["doc_id"]
+    # fix out of bonds error for some docids
+    pos_docids = [docid for docid in pos_docids if int(docid) < len(corpus)]
+    neg_docids = [docid for docid in neg_docids if int(docid) < len(corpus)]
+    pos_contents = [corpus[int(docid)]["contents"] for docid in pos_docids]
+    pos_titles = [corpus[int(docid)]["title"] for docid in pos_docids]
+    result["pos_docs"] = list(zip(pos_titles, pos_contents))
     neg_contents = [corpus[int(docid)]["contents"] for docid in neg_docids]
     neg_titles = [corpus[int(docid)]["title"] for docid in neg_docids]
-    result["neg_doc"] = list(zip(neg_titles, neg_contents))
+    result["neg_docs"] = list(zip(neg_titles, neg_contents))
     return result
 
 def process_chunk(chunk: list, corpus: Dataset, output_file: str):
@@ -42,6 +45,8 @@ def main():
     parser.add_argument("--output-dir", type=str, default="data")
     parser.add_argument("--num-workers", type=int, default=mp.cpu_count())
     args = parser.parse_args()
+
+    os.makedirs(args.output_dir, exist_ok=True)
 
     train_jsonl = os.path.join(args.data_dir, "train.jsonl")
     corpus_path = os.path.join(args.data_dir, 'passages.jsonl.gz')
