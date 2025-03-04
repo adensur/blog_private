@@ -17,7 +17,6 @@ from lib import RestorableSampler
 from typing import Dict, List, Any, Tuple, Optional
 from torch.optim.lr_scheduler import LambdaLR
 from functools import partial
-from torch.nn.utils import clip_grad_norm_
 import random
 from model import MyModel
 
@@ -154,13 +153,9 @@ class MyLightningModule(L.LightningModule):
         return loss
 
     def on_before_optimizer_step(self, optimizer):
-        # Calculate and log gradient norm before clipping
         grad_norm = torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in self.parameters() if p.grad is not None]))
         self.log("grad_norm", grad_norm)
-        
-        # Clip gradients
-        if self.args.max_grad_norm is not None:
-            clip_grad_norm_(self.parameters(), max_norm=self.args.max_grad_norm)
+
 
     def full_contrastive_scores_and_labels(
             self,
@@ -199,6 +194,9 @@ class MyLightningModule(L.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
+        if self.args.warmup_steps is None:
+            scheduler = StepLR(optimizer, step_size=1, gamma=self.args.gamma)
+            return [optimizer], [scheduler]
         
         def lr_lambda(current_step: int):
             if current_step < self.args.warmup_steps:
@@ -234,7 +232,7 @@ def main():
                         help='Path to checkpoint to resume training from')
     parser.add_argument("--use_restorable_sampler", action="store_true")
     parser.add_argument("--weight_decay", type=float, default=0.0)
-    parser.add_argument('--warmup_steps', type=int, default=1000)
+    parser.add_argument('--warmup_steps', type=int, default=None)
     parser.add_argument('--max_grad_norm', type=float, default=None)
     parser.add_argument("--loss_scale", type=float, default=1.0, help="negative to scale by world size")
     parser.add_argument("--train_n_passages", type=int, default=16, help="Number of passages to train on. 1 positive, n-1 negatives")
@@ -293,7 +291,8 @@ def main():
             every_n_train_steps=args.val_check_interval,
             save_weights_only=False
         )],
-        logger=wandb_logger
+        logger=wandb_logger,
+        gradient_clip_val=args.max_grad_norm,
     )
 
     module.trainer = trainer
