@@ -60,8 +60,11 @@ def full_contrastive_scores_and_labels(
     loss = F.cross_entropy(scores, labels)
 ```
 Dataloader yields 1 positive and 15 mined hard negatives per example. The `full_constrastive_scores_and_labels` function call generates extra "negative" examples from neighbouring queries in the batch. Since dataset is quite big, and queries are random, a document that is positive for one query ("How old is Trump?") will most likely be negative to another query ("Best running shoes").   
+
 The benefit of in-batch negative mining is two-fold. First, we want to provide extra negative examples for our training to better distinguish between different documents. The process of embedding training can be visualized as placing embedding vectors on the other side of the query projection on a hypersphere (check out this [cool paper](https://arxiv.org/pdf/2012.09740) about it). The more examples you have in a batch, the more you can uniformly "scatter them out" accross embedding space.   
+
 Second benefit is that, as it turns out, these in-batch-negatives are almost free from the memory/compute consumption standpoint. For the forward pass, you only need to add a bunch of dot product computations over the final embeddings of the documents - this is a minor overhead compared to computing of embedding themselves. Same for backward pass: we propagate gradients from loss to document scores to these embeddings; memory/compute footprint for backwards pass through the model will be the same.   
+
 Due to these 2 reasons, it turns out that the more in-batch negatives you have, the better. That is why it is probably beneficial to also share the negatives between different per-device microbatches, i.e., exchange them accross devices!   
 For that, we will use some `torch.distributed` communication functions:
 ```python
@@ -167,3 +170,83 @@ trainer = L.Trainer(
 )
 ```
 We provide Trainer with `gradient_clip_val` argument, which will cause it to clip gradients using [torch.nn.utils.clip_grad_norm_](https://pytorch.org/docs/stable/generated/torch.nn.utils.clip_grad_norm_.html#torch.nn.utils.clip_grad_norm_). What this does is multiply all the gradients by the same coefficient if overall norm is above 1. 
+
+## Results
+I am also providing a table with ndcg@10 results from my various experiments, starting from the base model of chapter 6.
+| name | comment | ndcg@10 |
+|------|---------|---------|
+| simlm | | 0.44149 |
+| train_v1 | base from 06 chapter, 3 epochs | 0.4295 |
+| train_v2 | base from 07 chapter, 3 epochs | 0.43606 |
+| train_v3 | restorable_sampler | 0.43494 |
+| train_v5 | no lr sched, shared negs, restorable sampler | 0.43853 |
+| train_v6 | no lr sched, shared negs, no restorable sampleer | 0.43982 |
+| train_v4 | lr sched + shared negs | 0.44002 |
+
+
+We can see that even our relatively simple code (350 lines for model + training) is almost on-par with the source from [simlm](https://github.com/microsoft/unilm/tree/master/simlm). Sharing negatives across devices and lr scheduling seems to improve training a little bit; my own custom RestorableSampler seems to make it a bit worse - though it may be just noise.
+
+Here are also all my launch parameters to reproduce the table:
+```bash
+python msmarco_convert.py --data-dir /traindata/maksim/repos/unilm/simlm/data/msmarco_bm25_official --output-dir data
+
+# chapter 06, basic training
+export MY_RUN_NAME=train_v1
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+
+# chapter 07, basic training (no restorable sampler)
+# https://wandb.ai/pplx-ai/your_project_name/runs/gkf0710q
+export MY_RUN_NAME=train_v2
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02 --val_path data/validation.jsonl --val_check_interval 200 --train_n_passages 16
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+
+# restorable sampler
+# https://wandb.ai/pplx-ai/your_project_name/runs/4wjyd192
+export MY_RUN_NAME=train_v3
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02 --val_path data/validation.jsonl --val_check_interval 200 --use_restorable_sampler
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+
+# in-batch negs + 1k warmup, no restorable sampler
+# https://wandb.ai/pplx-ai/your_project_name/runs/amqsqs30
+export MY_RUN_NAME=train_v4
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02 --val_path data/validation.jsonl --val_check_interval 200
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+
+# in-batch negs + 1k warmup, restorable sampler
+export MY_RUN_NAME=train_v5
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02 --val_path data/validation.jsonl --val_check_interval 200 --use_restorable_sampler
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+
+# in-batch negs + 1k warmup, no restorable sampler
+export MY_RUN_NAME=train_v6
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02 --val_path data/validation.jsonl --val_check_interval 200
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+
+# gradient clipping with torch lightning inner mechanism
+# https://wandb.ai/pplx-ai/your_project_name/runs/qhzp1ya3
+export MY_RUN_NAME=train_v7
+rm -rf runs/$MY_RUN_NAME
+rm -rf encode_runs/$MY_RUN_NAME
+python lightning_train.py --model_name_or_path intfloat/simlm-base-msmarco --train_path data/train.jsonl --output_dir runs/$MY_RUN_NAME --epochs 3 --batch-size 16 --p_max_len 144 --q_max_len 32 --temperature 0.02 --val_path data/validation.jsonl --val_check_interval 200
+python encode_passages.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --encode_batch_size 128 --encode_shard_size 1000000 --p_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16
+python search.py --data-dir msmarco_bm25_official --encode_save_dir encode_runs/$MY_RUN_NAME --q_max_len 512 --model_name_or_path runs/$MY_RUN_NAME --dataloader_num_workers 16 --search_split dev --search_out_dir search_runs/$MY_RUN_NAME
+```
