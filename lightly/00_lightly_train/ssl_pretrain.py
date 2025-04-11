@@ -13,6 +13,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-nodes", type=int, default=1)
     parser.add_argument("--num-gpus", type=int)
     parser.add_argument("--checkpoint", type=str)
+    parser.add_argument("--method", type=str, default="distillation")
     args = parser.parse_args()
 
     model = YOLO(args.model)
@@ -23,7 +24,7 @@ if __name__ == "__main__":
         out=args.output,  # Output directory.
         data=args.data,                                   # Directory with images.
         model=model,                                      # Pass the YOLO model.
-        method="dino",                                    # Self-supervised learning method.
+        method=args.method,                                    # Self-supervised learning method.
         epochs=args.epochs,                               # Adjust epochs for faster training.
         batch_size=args.batch_size,                                    # Adjust batch size based on hardware.
         loggers={"wandb": {"project": "my_project"}},
