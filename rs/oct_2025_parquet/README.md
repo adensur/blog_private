@@ -169,6 +169,121 @@ Let's walk through the code:
 - We convert (x & 0x7F) to `u8`. This will drop everything except 8 least significant bits - our group to write! Currently has 0 as "continution bit".
 - We byte shift `x` 7 bits to the right. This erases 7 least significant bits, and move everything else to the right. 
 - If current `x` is not zero (still have groups to encode!), we set continuation bit. We compute bitwise OR (`|=`, for "OR assignment") with 0x80, or 1000000 in binary - this will set continuation bit to 1, not changing anything else.
-- Continue until all groups are written.
+- Continue until all groups are written.  
 
-We still have a problem with negatives though. Recall that -1 i32 is `11111111 11111111 11111111 11111111`, which will be 5 bytes in varint encoding. Because of this, 
+We still have a problem with negatives though. Recall that -1 i32 is `11111111 11111111 11111111 11111111`, which will be 5 bytes in varint encoding. To combat this, we can also do ZigZag encoding. They map small negative integers into small unsigned integers:
+```
+  0 → 0
+ -1 → 1
+  1 → 2
+ -2 → 3
+  2 → 4
+ -3 → 5
+  3 → 6
+ ... (zig-zagging outward)
+```
+Here is rust code for it:
+```rust
+pub fn zigzag_encode_i64(n: i64) -> u64 {
+    ((n << 1) ^ (n >> 63)) as u64
+}
+```
+`n >> 63` computes sign mask; 0 for positives (or `00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000`, all bits unsert), 1 for negatives (all bits set, `11111111 11111111 11111111 11111111 11111111 11111111 11111111 11111111`).
+`(n << 1)` - bitwise shift to the left - same as multiplying by 2.
+`(n << 1) ^ (n >> 63)` - uses bitwise XOR operation (`^`). So, unsigned integers (with sign mask of all zeroes) will remain as-is, i.e. even (1 -> 2, 2 -> 4 etc); signed integers will XOR to all ones, which turns out to be the same as subtracting 1, so they become odd.  
+
+### Thrift
+We now know how to save simple types (single int value, single string value) as binary. What we don't know is how to save arbitrary data type: list of strings, list of lists, dictionary, custom structure with nested fields etc. We can aim to reproduce json functionality, which can do all these things. To do that, we will need to deal with these questions:  
+- how do we store optional elemements
+- how to we store arrays of elements
+- How do we store schema for structs with different field names/types
+Thrift is a protocal that deals with these. Another similar binary protocol is `protobuf`. We look at `thrift` here because it is used inside Parquet in some places.  
+Let's start with Rust example of serializing thrift. First, we need to create a schema file:  
+```thrift
+namespace rs user
+
+struct User {
+  1: required i32 id,
+}
+```
+`namespace` here is just needed for convenient access to the generated code from Rust.  
+We define User struct with a single i32 id field. Similar to proto, apart from field name and type, there is also its "thrift id", 1 in this case. As we'll see later, during serialization, field type and id are saved, while the name is not. This adds a certain degree of safety during schema evolution. If you try to read 1-year-old log entries using new code, after a bunch of fields were added/deleted, you will get an error if there is an id to type mismatch. However, there's still some probability of collision if old struct had a field with the same type and id, but different name.  
+
+In order to use this struct in Rust, we'll need some code gen. We can embed codegeneration step in cargo by adding build.rs: 
+```rust
+// build.rs
+fn main() {
+    // Invalidate the build script when the thrift file changes
+    println!("cargo:rerun-if-changed=thrift/user.thrift");
+
+    // Use the system `thrift` compiler to generate Rust code into OUT_DIR
+    let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR is set by Cargo");
+    let status = std::process::Command::new("thrift")
+        .args(["--gen", "rs", "-out", &out_dir, "thrift/user.thrift"])
+        .status()
+        .expect("failed to run thrift compiler. Is `thrift` installed?");
+    if !status.success() {
+        panic!("thrift compiler failed: {status}");
+    }
+
+    // Post-process generated file to convert inner crate attributes (#![...]) to outer ones (#[])
+    // so the generated code can be safely included in a module.
+    let gen_file = std::path::Path::new(&out_dir).join("user.rs");
+    if let Ok(src) = std::fs::read_to_string(&gen_file) {
+        let patched = src.replace("#![", "#[");
+        let _ = std::fs::write(&gen_file, patched);
+    }
+}
+```
+And then add rust helpers:
+```rust
+pub mod user_gen {
+    include!(concat!(env!("OUT_DIR"), "/user.rs"));
+}
+
+pub use user_gen::User;
+
+use thrift::protocol::{TCompactOutputProtocol, TSerializable};
+use thrift::transport::TBufferChannel;
+
+pub fn serialize_user_compact(user: &User) -> Vec<u8> {
+    let mut channel = TBufferChannel::with_capacity(0, 128);
+    {
+        let mut proto = TCompactOutputProtocol::new(&mut channel);
+        user.write_to_out_protocol(&mut proto)
+            .expect("serialize user");
+    }
+    channel.write_bytes()
+}
+```
+And write the actual binary:  
+```rust
+// main.rs
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+};
+
+use parquet::{
+    thrift::{User, serialize_user_compact},
+};
+
+fn main() {
+    // Initialize a Thrift `User` struct and serialize it into binary using TBinaryOutputProtocol
+    let user = User {
+        id: 123,
+        // name: "Alice".to_string(),
+    };
+
+    // Saving thrift compact version (for reference)
+    let compact = serialize_user_compact(&user);
+    let file = File::create("myfile2").unwrap();
+    let mut writer = BufWriter::new(file);
+    writer.write_all(&compact).unwrap();
+    writer.flush().unwrap();
+    println!(
+        "Wrote {} bytes of Thrift-compact User to myfile2",
+        compact.len()
+    );
+}
+```
