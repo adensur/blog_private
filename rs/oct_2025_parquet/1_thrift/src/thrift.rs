@@ -12,7 +12,7 @@ pub mod user_gen {
     include!(concat!(env!("OUT_DIR"), "/user.rs"));
 }
 
-pub use user_gen::User;
+pub use user_gen::{USERCOLLECTION, User};
 
 use thrift::protocol::{TCompactOutputProtocol, TSerializable};
 use thrift::transport::TBufferChannel;
@@ -23,6 +23,16 @@ pub fn serialize_user_compact(user: &User) -> Vec<u8> {
         let mut proto = TCompactOutputProtocol::new(&mut channel);
         user.write_to_out_protocol(&mut proto)
             .expect("serialize user");
+    }
+    channel.write_bytes()
+}
+
+pub fn serialize_collection_compact(coll: &USERCOLLECTION) -> Vec<u8> {
+    let mut channel = TBufferChannel::with_capacity(0, 256);
+    {
+        let mut proto = TCompactOutputProtocol::new(&mut channel);
+        coll.write_to_out_protocol(&mut proto)
+            .expect("serialize collection");
     }
     channel.write_bytes()
 }

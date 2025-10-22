@@ -1,7 +1,0 @@
-namespace rs user
-
-struct User {
-  1: required i32 id,
-}
-
-

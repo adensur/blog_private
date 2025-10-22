@@ -287,3 +287,291 @@ fn main() {
     );
 }
 ```
+Compile and run this, refer to code in the github repo if you encounter problems. This is what the file should look like:  
+```bash
+xxd -b myfile
+# 00000000: 00010101 11110110 00000001 00000000
+```
+To understand what these bits mean, I vibecoded a plain binary writer that mimics thrift format, and made sure it writes exactly the same bytes. We will go over this code step by step now.  
+```rust
+// calling my ad-hoc code
+// main.rs
+use parquet::{
+    my_compact::{CompactWriter, write_user_compact},
+}
+let mut file = File::create("myfile").unwrap();
+let mut cw = CompactWriter::new(&mut file);
+write_user_compact(&mut cw, &user).unwrap();
+println!("Wrote bytes of Compact-binary User to myfile");
+```
+```rust
+// my_compact.rs
+use crate::thrift::User;
+const TTYPE_I32: u8 = 0x05;
+
+pub fn write_user_compact<W: Write>(cw: &mut CompactWriter<W>, user: &User) -> io::Result<()> {
+    cw.write_field_header(1, TTYPE_I32)?;
+    cw.write_i32(user.id)?;
+    cw.write_stop()
+}
+```
+In order to serialize our "User" struct, we write fields one by one: "field header", followed by the actual value, followed by the special "stop" byte (`\0`, or `00000000`). This is how we write a header:
+```rust
+pub fn write_field_header(&mut self, field_id: i16, ttype: u8) -> io::Result<()> {
+    let delta = field_id - self.prev_field_id;
+    if (1..=15).contains(&delta) {
+        let b = ((delta as u8) << 4) | (ttype & 0x0F);
+        self.out.write_all(&[b])?;
+    } else {
+        self.out.write_all(&[ttype & 0x0F])?;
+        self.write_varint_u32(zigzag_i16(field_id) as u32)?;
+    }
+    self.prev_field_id = field_id;
+    Ok(())
+}
+```
+As mentioned before, we need to write field type and field id. Unlike `json`, field name is not saved, and we'll need to rely on readers knowing the schema for correct interpretation.   
+In the code above, we try to pack two fields - id and type - into a single byte. For that, we try to apply delta-encoding to the `id` field: we store `prev_field_id` during serialization, initializing it with 0. In real production use cases, a struct might have hundreds of fields. But most likely they will come in order, and deltas will be relatively small, most likely 1.  
+We check if delta is less then 16. If it is (happy path), we only need 4 bits to store it. Type also fits in 4 bits, because there's only a handful of primitive types (signed/unsigned integer of various sizes, float, binary).   
+`(delta as u8) << 4` - left-shift the delta, so it essentially occupies only the leftmost 4 bits
+`(ttype & 0x0F)` - compute bitwise `and` between type and `0x0F`, or `00001111`, essentially zeroing out everything but rightmost 4 bits. 
+`((delta as u8) << 4) | (ttype & 0x0F)` - bitwise `and` - effectively uniting these two together. Now, left 4 bits encode id, right 4 bits encode type.
+```rust
+pub fn write_i32(&mut self, v: i32) -> io::Result<()> {
+    self.write_varint_u32(zigzag_i32(v) as u32)
+}
+```
+After writing the header, we write the value - varint, zigzag encoded:  
+`zigzag(123) = 246 = 11110110`  
+Dividing into 7 bits: `1110110`, `1` or `1110110`, `0000001`.  
+Then, add "1" as continuation bit to first group, "0" to second:  
+`11110110`, `00000001`  
+Or, to explain the whole bit layout of what we've written:  
+```
+xxd -b myfile
+00000000: 00010101 11110110 00000001 00000000
+          <id><ty> |<    |> <     |> <zero b>
+    continuation bit     |        |
+       varint first 7 bits        |
+               varint second 7 bits
+```
+Let's add another field to our struct:  
+```thrift
+struct User {
+  1: required i32 id,
+  2: required string name,
+}
+```
+And this is how we serialize it:  
+```
+pub fn write_string(&mut self, s: &str) -> io::Result<()> {
+    let bytes = s.as_bytes();
+    self.write_varint_u32(bytes.len() as u32)?;
+    self.out.write_all(bytes)
+}
+
+pub fn write_user_compact<W: Write>(cw: &mut CompactWriter<W>, user: &User) -> io::Result<()> {
+    cw.write_field_header(1, TTYPE_I32)?;
+    cw.write_i32(user.id)?;
+    cw.write_field_header(2, TTYPE_BINARY)?;
+    cw.write_string(&user.name)?;
+    cw.write_stop()
+}
+```
+The result:
+```text
+xxd -b myfile
+00000000: 00010101 11110110 00000001 00011000 00000101 01000001  .....A
+00000006: 01101100 01101001 01100011 01100101 00000000           lice.
+```
+let's go over it byte by byte:   
+```text
+00010101: `0001` for "field id +1 from previous", `0101` or `5` for field type (i32)
+11110110: `1` for continuation bit, `1110110` for number 7 bits
+`00000001`: `0` for continuation bit, `0000001` for another 7 bits of number. Note that 7-bit groups come in little endian order
+`00011000`: next field id +1, or 2 overall. Type is `1000`, or `8`, or "binary" - arbitrary bytes
+`00000101`: varint encoding for bytes length. `101` means "5" - 5 ascii chars in word Alice -> 5 bytes. Note that we don't use zigzag here because we KNOW that the number is unsigned
+`01000001`: "A"
+`01101100`: "l"
+`01101001`: "i"
+`01100011`: "c"
+`01100101`: "e"
+`00000000`: stop
+```
+### Optionals
+Let's do optional fields now. Schema:
+```thrift
+struct User {
+  1: required i32 id,
+  2: required string name,
+  3: optional string email,
+}
+```
+And rust serializer: 
+```rust
+pub fn write_user_compact<W: Write>(cw: &mut CompactWriter<W>, user: &User) -> io::Result<()> {
+    cw.write_field_header(1, TTYPE_I32)?;
+    cw.write_i32(user.id)?;
+    cw.write_field_header(2, TTYPE_BINARY)?;
+    cw.write_string(&user.name)?;
+    if let Some(email) = &user.email {
+        cw.write_field_header(3, TTYPE_BINARY)?;
+        cw.write_string(email)?;
+    }
+    cw.write_stop()
+}
+```
+There is no special handling of optionals on the wire. Instead, if the field is optional and is missing - we don't save it. When reading, we read until the stop byte, and then check to see if we've read all required fields or not. 
+### Lists
+```thrift
+struct User {
+  1: required i32 id,
+  2: required string name,
+  3: optional string email,
+  4: optional list<string> tags,
+}
+```
+```rust
+// my_compact.rs
+const TTYPE_LIST: u8 = 0x09;
+
+pub fn write_list_header(&mut self, elem_ttype: u8, len: usize) -> io::Result<()> {
+    if len < 15 {
+        let b = ((len as u8) << 4) | (elem_ttype & 0x0F);
+        self.out.write_all(&[b])
+    } else {
+        let b = (0xF0) | (elem_ttype & 0x0F);
+        self.out.write_all(&[b])?;
+        self.write_varint_u32(len as u32)
+    }
+}
+
+pub fn write_user_compact<W: Write>(cw: &mut CompactWriter<W>, user: &User) -> io::Result<()> {
+    // ...
+    if let Some(tags) = &user.tags {
+        cw.write_field_header(4, TTYPE_LIST)?;
+        cw.write_list_header(TTYPE_BINARY, tags.len())?;
+        for t in tags {
+            cw.write_string(t)?;
+        }
+    }
+    cw.write_stop()
+}
+```
+```rust
+// main.rs
+let user = User::new(
+        123,
+        "Alice".to_string(),
+        Some("alice@example.com".to_string()),
+        Some(vec!["rust".to_string(), "parquet".to_string()]),
+    );
+```
+When we serialize a list, we first write down a TYPE byte that corresponds to TTYPE_LIST. Then, we annotate list length and type of list elements. Once again, we try to pack both into single byte if possible (4 bits for length, 4 for type), i.e. when len < 15.  
+### Writing nested structs
+Now let's serialize a schema like this:
+```thrift
+struct User {
+  1: required i32 id,
+  2: required string name,
+  3: optional string email,
+  4: optional list<string> tags,
+}
+
+struct USER_COLLECTION {
+  1: required list<User> users,
+}
+```
+Rust code:  
+```rust
+pub fn write_user_compact<W: Write>(cw: &mut CompactWriter<W>, user: &User) -> io::Result<()> {
+    // Each struct resets field id delta base
+    let saved = cw.prev_field_id;
+    cw.prev_field_id = 0;
+
+    cw.write_field_header(1, TTYPE_I32)?;
+    cw.write_i32(user.id)?;
+    cw.write_field_header(2, TTYPE_BINARY)?;
+    cw.write_string(&user.name)?;
+    if let Some(email) = &user.email {
+        cw.write_field_header(3, TTYPE_BINARY)?;
+        cw.write_string(email)?;
+    }
+    if let Some(tags) = &user.tags {
+        cw.write_field_header(4, TTYPE_LIST)?;
+        cw.write_list_header(TTYPE_BINARY, tags.len())?;
+        for t in tags {
+            cw.write_string(t)?;
+        }
+    }
+    let r = cw.write_stop();
+    cw.prev_field_id = saved;
+    r
+}
+
+pub fn write_collection_compact<W: Write>(
+    cw: &mut CompactWriter<W>,
+    coll: &USERCOLLECTION,
+) -> io::Result<()> {
+    // Outer struct reset
+    let saved = cw.prev_field_id;
+    cw.prev_field_id = 0;
+
+    cw.write_field_header(1, TTYPE_LIST)?;
+    let users = &coll.users;
+    cw.write_list_header(TTYPE_STRUCT, users.len())?;
+    for u in users {
+        write_user_compact(cw, u)?;
+    }
+    let r = cw.write_stop();
+    cw.prev_field_id = saved;
+    r
+```
+So, to serialize a list of User structs, we follow the same pattern as with other lists: we write field header (field id + TTYPE_LIST), list header (TTYPE_STRUCT - for element type, and length). Then we dump each individual struct with the same code as we've seen before.  
+Couple notes:  
+- We will save STOP byte after each nested struct. So, read algorithm will look something like this: "I am expecting a list of 2 structs. Read first struct until you encounter first STOP marker. Then read second struct. Then continue reading fields of outer struct". This also means that STOP byte can be encountered in the middle of the file, not just in the end.
+- Nested structs have their own running "field_id" that is used for delta encoding. This is why we do `let saved = cw.prev_field_id;`  to preserve field id of the outer struct.  
+### Dictionaries/maps
+```thrift
+struct User {
+  1: required i32 id,
+  2: required string name,
+  3: optional string email,
+  4: optional list<string> tags,
+  5: optional map<string, i64> attributes,
+}
+```
+```rust
+// my_compact.rs
+if let Some(attrs) = &user.attributes {
+    cw.write_field_header(5, TTYPE_MAP)?;
+    // map header: size varint, then a byte: (key_type << 4) | value_type
+    cw.write_varint_u32(attrs.len() as u32)?;
+    let types = ((TTYPE_BINARY & 0x0F) << 4) | (TTYPE_I64 & 0x0F);
+    cw.out.write_all(&[types])?;
+    for (k, v) in attrs {
+        cw.write_string(k)?;
+        cw.write_i64(*v)?;
+    }
+}
+```
+Thrift has a dedicated `map` field type. It's not 100% needed, because you can simulate it's behaviour with a list of pairs, and because on-disk you still wouldn't get O(1) or O(log(N)) access as you would with in-memory maps. But it allows having a more direct mapping between in-memory structs and their thrift representations.  
+### Outro
+Now I want to zoom about a bit and talk about thrift in general.  
+
+First, why do we need those type flags and field ids? Let's compare on-the-wire thrift layout to in-memory layout.  
+Let's talk about `Vec<User>`, as an example. In memory, `Vec` would store size + pointer to data, and that's it. Data for `User`, in turn, will just have fields values one by one, without any special type annotation. In memory, we can do that because a) type information is saved implicitly in code b) we can rely that the memory was written by the same version of the program.   
+
+It's not always the case. For example, imagine that you are using something like `ABI`, application binary interface, to access rust structs from `c` or something like this. Then, we cannot guarantee that `c` field order is exactly the same as `rust`. But mostly we don't deal with ABI, so we don't care about stuff like this.  
+
+We could write binary serialization protocol in a similar way - just save the data, rely on reading code to match expectations exactly. Then, we could've save on those type and field id annotations.  
+
+In real production scenarious, things evolve, so we cannot rely on that. Fields get added and removed. Different web servers are deployed at fidderent times. Programmers make mistakes. With that in mind, it's useful to have backward compatibility, and to have some failsafe mechanisms that will catch potential errors.
+
+Let's also compare `thrift` to what we expect from `parquet`: can we do selective column and row access?  
+
+No, we cannot. Struct fields are serialized one after another, without order guarantee even. So if we read a list of structs, even if we just want 1 field from every element, we have to read everything.  
+
+Same goes for selective row access. If we wanted to read element number 1000, how could we do it? There is no header that will say where the struct offsets are. With variable-length types (string/varint/etc), we don't know precise size of each struct, not even approximately. Even if we try to "guess" that in a file with 2000 elements, element number 1000 will be somewhere in the middle - we have no way of validating that. 
+
+In the next part of this series, we'll look at parquet, and we'll see how it solves this problems.
