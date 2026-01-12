@@ -1,0 +1,11 @@
+[workspace]
+members = ["util", "parquet_columnar"]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1.42", features = ["full"] }
+rand = "0.8"
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+parquet = "54.0"
+arrow = "54.0"
