@@ -1,0 +1,16 @@
+[package]
+name = "parquet_columnar_s3"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+util = { path = "../util" }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+parquet = { workspace = true }
+arrow = { workspace = true }
+object_store = { workspace = true }
+futures = { workspace = true }
+bytes = { workspace = true }
+url = { workspace = true }

@@ -1,0 +1,12 @@
+[package]
+name = "parquet_columnar"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+util = { path = "../util" }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+parquet = { workspace = true }
+arrow = { workspace = true }
