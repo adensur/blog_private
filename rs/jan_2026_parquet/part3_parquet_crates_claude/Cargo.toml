@@ -7,9 +7,9 @@ tokio = { version = "1.42", features = ["full"] }
 rand = "0.8"
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
-parquet = { version = "54.0", features = ["async"] }
-arrow = "54.0"
-object_store = { version = "0.11", features = ["aws"] }
+parquet = { version = "57.0", features = ["async", "object_store"] }
+arrow = "57.0"
+object_store = { version = "0.12", features = ["aws"] }
 futures = "0.3"
 bytes = "1.0"
 url = "2.5"

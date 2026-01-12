@@ -1,83 +1,17 @@
 use anyhow::{Context, Result};
 use arrow::array::{Array, ArrayRef, FixedSizeListArray, Float32Array, RecordBatch};
 use arrow::datatypes::{DataType, Field, FieldRef, Schema};
-use bytes::Bytes;
 use clap::Parser;
+use futures::StreamExt;
 use object_store::aws::AmazonS3Builder;
 use object_store::buffered::BufWriter;
 use object_store::path::Path as ObjectPath;
 use object_store::ObjectStore;
-use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+use parquet::arrow::async_reader::{ParquetObjectReader, ParquetRecordBatchStreamBuilder};
 use parquet::arrow::AsyncArrowWriter;
-use parquet::file::reader::ChunkReader;
-use parquet::file::reader::Length;
-use std::io::{Read, Seek, SeekFrom};
 use std::sync::Arc;
 use std::time::Instant;
 use url::Url;
-
-// Wrapper to make Bytes work with ChunkReader
-struct BytesReader {
-    bytes: Bytes,
-    pos: usize,
-}
-
-impl BytesReader {
-    fn new(bytes: Bytes) -> Self {
-        Self { bytes, pos: 0 }
-    }
-}
-
-impl Read for BytesReader {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let remaining = &self.bytes[self.pos..];
-        let to_read = remaining.len().min(buf.len());
-        buf[..to_read].copy_from_slice(&remaining[..to_read]);
-        self.pos += to_read;
-        Ok(to_read)
-    }
-}
-
-impl Seek for BytesReader {
-    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
-        let new_pos = match pos {
-            SeekFrom::Start(n) => n as i64,
-            SeekFrom::Current(n) => self.pos as i64 + n,
-            SeekFrom::End(n) => self.bytes.len() as i64 + n,
-        };
-
-        if new_pos < 0 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Invalid seek position",
-            ));
-        }
-
-        self.pos = new_pos as usize;
-        Ok(self.pos as u64)
-    }
-}
-
-impl Length for BytesReader {
-    fn len(&self) -> u64 {
-        self.bytes.len() as u64
-    }
-}
-
-impl ChunkReader for BytesReader {
-    type T = BytesReader;
-
-    fn get_read(&self, start: u64) -> parquet::errors::Result<Self::T> {
-        Ok(BytesReader {
-            bytes: self.bytes.slice(start as usize..),
-            pos: 0,
-        })
-    }
-
-    fn get_bytes(&self, start: u64, length: usize) -> parquet::errors::Result<Bytes> {
-        Ok(self.bytes.slice(start as usize..(start as usize + length)))
-    }
-}
 
 #[derive(Parser, Debug)]
 #[command(name = "parquet_columnar_s3")]
@@ -208,38 +142,32 @@ async fn main() -> Result<()> {
 
     println!("Input file size: {:.2} MB", file_size_bytes as f64 / 1_048_576.0);
 
-    // Read the Parquet file from S3
-    let get_result = input_store
-        .get(&input_path)
+    // Create streaming Parquet reader from S3
+    println!("Creating Parquet stream from S3...");
+    let parquet_reader = ParquetObjectReader::new(input_store.clone(), input_path.clone());
+    let builder = ParquetRecordBatchStreamBuilder::new(parquet_reader)
         .await
-        .context("Failed to read file from S3")?;
-
-    let bytes = get_result
-        .bytes()
-        .await
-        .context("Failed to get file bytes")?;
-
-    let time_to_first_byte = Some(start_time.elapsed());
-    println!(
-        "First byte received after: {:.3}s",
-        time_to_first_byte.unwrap().as_secs_f64()
-    );
-
-    // Create Parquet reader
-    let bytes_reader = BytesReader::new(bytes);
-    let builder = ParquetRecordBatchReaderBuilder::try_new(bytes_reader)
-        .context("Failed to create Parquet reader builder")?;
+        .context("Failed to create Parquet stream builder")?;
 
     let schema = builder.schema().clone();
-    let reader = builder.build().context("Failed to build Parquet reader")?;
+    let mut stream = builder.build().context("Failed to build Parquet stream")?;
 
+    let mut time_to_first_byte = None;
     let mut all_texts = Vec::new();
     let mut all_batches = Vec::new();
     let mut total_rows = 0;
 
-    // Read all batches and extract text column
-    println!("Reading Parquet file from S3...");
-    for batch_result in reader {
+    // Read all batches from the stream
+    println!("Reading Parquet file from S3 (streaming)...");
+    while let Some(batch_result) = stream.next().await {
+        if time_to_first_byte.is_none() {
+            time_to_first_byte = Some(start_time.elapsed());
+            println!(
+                "First byte received after: {:.3}s",
+                time_to_first_byte.unwrap().as_secs_f64()
+            );
+        }
+
         let batch = batch_result.context("Failed to read batch")?;
 
         total_rows += batch.num_rows();
