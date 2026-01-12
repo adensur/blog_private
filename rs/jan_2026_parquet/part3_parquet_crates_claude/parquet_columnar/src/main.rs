@@ -41,6 +41,9 @@ struct Args {
 
 struct Metrics {
     time_to_first_byte: std::time::Duration,
+    reading_time: std::time::Duration,
+    embedding_time: std::time::Duration,
+    writing_time: std::time::Duration,
     total_rows: usize,
     total_time: std::time::Duration,
     file_size_bytes: u64,
@@ -49,15 +52,33 @@ struct Metrics {
 impl Metrics {
     fn report(&self) {
         println!("\n=== Benchmark Results ===");
-        println!("Time to first byte: {:.3}s", self.time_to_first_byte.as_secs_f64());
-        println!("Total rows processed: {}", self.total_rows);
-        println!("Total time: {:.3}s", self.total_time.as_secs_f64());
         println!(
-            "Throughput: {:.2} rows/sec",
+            "Time to first byte: {:.3}s",
+            self.time_to_first_byte.as_secs_f64()
+        );
+        println!("Total rows processed: {}", self.total_rows);
+        println!();
+        println!("=== Stage Breakdown ===");
+        println!("Reading from disk:      {:.3}s ({:.1}%)",
+            self.reading_time.as_secs_f64(),
+            (self.reading_time.as_secs_f64() / self.total_time.as_secs_f64()) * 100.0
+        );
+        println!("Computing embeddings:   {:.3}s ({:.1}%)",
+            self.embedding_time.as_secs_f64(),
+            (self.embedding_time.as_secs_f64() / self.total_time.as_secs_f64()) * 100.0
+        );
+        println!("Writing to disk:        {:.3}s ({:.1}%)",
+            self.writing_time.as_secs_f64(),
+            (self.writing_time.as_secs_f64() / self.total_time.as_secs_f64()) * 100.0
+        );
+        println!();
+        println!("Total time:             {:.3}s", self.total_time.as_secs_f64());
+        println!(
+            "Throughput:             {:.2} rows/sec",
             self.total_rows as f64 / self.total_time.as_secs_f64()
         );
         println!(
-            "Throughput: {:.2} MB/sec",
+            "Throughput:             {:.2} MB/sec",
             (self.file_size_bytes as f64 / 1_048_576.0) / self.total_time.as_secs_f64()
         );
     }
@@ -135,6 +156,8 @@ async fn main() -> Result<()> {
 
     println!("Read {} rows in {:.3}s", total_rows, start_time.elapsed().as_secs_f64());
 
+    let reading_end_time = Instant::now();
+
     // Create embedding client
     let client = util::EmbeddingClient::new(args.latency_ms, args.server_concurrency);
     println!(
@@ -173,6 +196,8 @@ async fn main() -> Result<()> {
 
     println!("Generated {} embeddings", all_embeddings.len());
 
+    let embedding_end_time = Instant::now();
+
     // Write output with embeddings
     println!("Writing output Parquet file...");
     write_parquet_with_embeddings(
@@ -182,11 +207,15 @@ async fn main() -> Result<()> {
         all_embeddings,
     )?;
 
+    let writing_end_time = Instant::now();
     let total_time = start_time.elapsed();
 
     // Report metrics
     let metrics = Metrics {
         time_to_first_byte: time_to_first_byte.unwrap(),
+        reading_time: reading_end_time - start_time,
+        embedding_time: embedding_end_time - reading_end_time,
+        writing_time: writing_end_time - embedding_end_time,
         total_rows,
         total_time,
         file_size_bytes,
