@@ -232,7 +232,7 @@ A e_1=\begin{pmatrix}a\\c\end{pmatrix},
 \qquad
 A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
 \]</span></p>
-<p>Try changing the entries of <span class="math inline">\(A\)</span> below. The grey grid is the original coordinate grid; the blue/orange grid is its image under <span class="math inline">\(A\)</span>.</p>
+<p>Try changing the entries of <span class="math inline">\(A\)</span> below. The grey grid is the original coordinate grid; the blue/orange grid is its image under <span class="math inline">\(A\)</span>. The faint grey arrow is an asymmetric test shape, and the purple arrow is its image under the same matrix.</p>
 <style>
   .matrix-widget {
     border: 1px solid #d8dde7;
@@ -409,6 +409,7 @@ A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
         <span><i class="legend-line" style="background:#2f6fdd"></i>image of vertical lines</span>
         <span><i class="legend-line" style="background:#e07a2f"></i>image of horizontal lines</span>
         <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
+        <span><i class="legend-line" style="background:#7c3aed"></i>transformed arrow shape</span>
       </div>
       <svg class="matrix-canvas" id="matrix-svg" viewbox="0 0 760 610" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
     </section>
@@ -435,6 +436,15 @@ A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
   const margin = 46;
   const gridExtent = 4;
   const defaultMatrix = [1, 0.6, -0.3, 1];
+  const arrowShape = [
+    [-2.2, -0.55],
+    [0.15, -0.55],
+    [0.15, -1.05],
+    [1.35, 0],
+    [0.15, 1.05],
+    [0.15, 0.55],
+    [-2.2, 0.55],
+  ];
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
   function numberFrom(input, fallback) {
@@ -467,6 +477,8 @@ A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
     }
     points.push([-gridExtent, -gridExtent], [gridExtent, gridExtent]);
     points.push(applyMatrix(matrix, [1, 0]), applyMatrix(matrix, [0, 1]));
+    points.push(...arrowShape);
+    points.push(...arrowShape.map((point) => applyMatrix(matrix, point)));
     return points;
   }
 
@@ -508,6 +520,11 @@ A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
   function addPolyline(group, view, points, attrs) {
     const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
     group.appendChild(svgEl("polyline", { points: projected, ...attrs }));
+  }
+
+  function addPolygon(group, view, points, attrs) {
+    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
+    group.appendChild(svgEl("polygon", { points: projected, ...attrs }));
   }
 
   function addArrow(group, view, start, end, color, label) {
@@ -585,6 +602,22 @@ A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
         opacity: 0.86,
       });
     }
+
+    addPolygon(original, view, arrowShape, {
+      fill: "rgba(107, 114, 128, 0.08)",
+      stroke: "#6b7280",
+      "stroke-width": 2,
+      "stroke-dasharray": "6 6",
+      "stroke-linejoin": "round",
+    });
+
+    const arrowImage = arrowShape.map((point) => applyMatrix(matrix, point));
+    addPolygon(foreground, view, arrowImage, {
+      fill: "rgba(124, 58, 237, 0.16)",
+      stroke: "#7c3aed",
+      "stroke-width": 3.2,
+      "stroke-linejoin": "round",
+    });
 
     const square = [
       applyMatrix(matrix, [0, 0]),

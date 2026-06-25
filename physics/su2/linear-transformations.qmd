@@ -31,7 +31,7 @@ A e_1=\begin{pmatrix}a\\c\end{pmatrix},
 A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
 $$
 
-Try changing the entries of $A$ below. The grey grid is the original coordinate grid; the blue/orange grid is its image under $A$.
+Try changing the entries of $A$ below. The grey grid is the original coordinate grid; the blue/orange grid is its image under $A$. The faint grey arrow is an asymmetric test shape, and the purple arrow is its image under the same matrix.
 
 ```{=html}
 <style>
@@ -210,6 +210,7 @@ Try changing the entries of $A$ below. The grey grid is the original coordinate 
         <span><i class="legend-line" style="background:#2f6fdd"></i>image of vertical lines</span>
         <span><i class="legend-line" style="background:#e07a2f"></i>image of horizontal lines</span>
         <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
+        <span><i class="legend-line" style="background:#7c3aed"></i>transformed arrow shape</span>
       </div>
       <svg class="matrix-canvas" id="matrix-svg" viewBox="0 0 760 610" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
     </section>
@@ -236,6 +237,15 @@ Try changing the entries of $A$ below. The grey grid is the original coordinate 
   const margin = 46;
   const gridExtent = 4;
   const defaultMatrix = [1, 0.6, -0.3, 1];
+  const arrowShape = [
+    [-2.2, -0.55],
+    [0.15, -0.55],
+    [0.15, -1.05],
+    [1.35, 0],
+    [0.15, 1.05],
+    [0.15, 0.55],
+    [-2.2, 0.55],
+  ];
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
   function numberFrom(input, fallback) {
@@ -268,6 +278,8 @@ Try changing the entries of $A$ below. The grey grid is the original coordinate 
     }
     points.push([-gridExtent, -gridExtent], [gridExtent, gridExtent]);
     points.push(applyMatrix(matrix, [1, 0]), applyMatrix(matrix, [0, 1]));
+    points.push(...arrowShape);
+    points.push(...arrowShape.map((point) => applyMatrix(matrix, point)));
     return points;
   }
 
@@ -309,6 +321,11 @@ Try changing the entries of $A$ below. The grey grid is the original coordinate 
   function addPolyline(group, view, points, attrs) {
     const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
     group.appendChild(svgEl("polyline", { points: projected, ...attrs }));
+  }
+
+  function addPolygon(group, view, points, attrs) {
+    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
+    group.appendChild(svgEl("polygon", { points: projected, ...attrs }));
   }
 
   function addArrow(group, view, start, end, color, label) {
@@ -386,6 +403,22 @@ Try changing the entries of $A$ below. The grey grid is the original coordinate 
         opacity: 0.86,
       });
     }
+
+    addPolygon(original, view, arrowShape, {
+      fill: "rgba(107, 114, 128, 0.08)",
+      stroke: "#6b7280",
+      "stroke-width": 2,
+      "stroke-dasharray": "6 6",
+      "stroke-linejoin": "round",
+    });
+
+    const arrowImage = arrowShape.map((point) => applyMatrix(matrix, point));
+    addPolygon(foreground, view, arrowImage, {
+      fill: "rgba(124, 58, 237, 0.16)",
+      stroke: "#7c3aed",
+      "stroke-width": 3.2,
+      "stroke-linejoin": "round",
+    });
 
     const square = [
       applyMatrix(matrix, [0, 0]),
