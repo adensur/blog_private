@@ -14,12 +14,15 @@ website:
         text: Linear Algebra
       - href: linear-transformations.qmd
         text: Linear Transformations
+      - href: matrix-transform-playground.qmd
+        text: Matrix Playground
   sidebar:
     style: docked
     contents:
       - index.qmd
       - linear-algebra.qmd
       - linear-transformations.qmd
+      - matrix-transform-playground.qmd
 
 format:
   html:

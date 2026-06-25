@@ -8,3 +8,4 @@ This is a working journal for notes on mathematics, physics, symmetry, and Lie t
 
 - [Linear Algebra](linear-algebra.qmd)
 - [Linear Transformations](linear-transformations.qmd)
+- [Matrix Transformation Playground](matrix-transform-playground.qmd)

@@ -1,0 +1,601 @@
+---
+title: "Matrix Transformation Playground"
+page-layout: full
+toc: false
+number-sections: false
+---
+
+```{=html}
+<style>
+  .quarto-title-block {
+    display: none;
+  }
+
+  .matrix-playground {
+    min-height: calc(100vh - 76px);
+    padding: clamp(14px, 2vw, 28px);
+    background: #f5f7fb;
+  }
+
+  .matrix-playground-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .matrix-playground-title {
+    margin: 0;
+    font-size: clamp(1.8rem, 3vw, 3.4rem);
+    line-height: 1.05;
+    font-weight: 760;
+    color: #111827;
+  }
+
+  .matrix-playground-subtitle {
+    margin: 8px 0 0;
+    max-width: 900px;
+    font-size: clamp(1rem, 1.25vw, 1.3rem);
+    color: #4b5565;
+  }
+
+  .matrix-playground-shell {
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+    gap: 20px;
+    min-height: min(820px, calc(100vh - 190px));
+  }
+
+  .matrix-panel,
+  .matrix-stage {
+    border: 1px solid #d6dde8;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  }
+
+  .matrix-panel {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .matrix-controls-title {
+    font-size: 1.25rem;
+    font-weight: 750;
+    color: #111827;
+  }
+
+  .matrix-input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .matrix-input-grid label {
+    display: grid;
+    gap: 6px;
+    font-size: 1.05rem;
+    color: #4b5565;
+    font-weight: 650;
+  }
+
+  .matrix-input-grid input {
+    width: 100%;
+    min-height: 64px;
+    border: 1px solid #b9c3d2;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    font-size: 1.75rem;
+    font-weight: 680;
+    background: #ffffff;
+    color: #111827;
+  }
+
+  .matrix-display {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr auto;
+    gap: 10px 16px;
+    align-items: center;
+    justify-items: center;
+    padding: 16px;
+    border: 1px solid #e3e7ef;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #111827;
+    font-size: 2rem;
+    font-weight: 720;
+  }
+
+  .matrix-bracket {
+    grid-row: span 2;
+    font-size: 4.7rem;
+    line-height: 0.82;
+    color: #64748b;
+  }
+
+  .matrix-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .matrix-presets button,
+  .matrix-action {
+    border: 1px solid #b9c3d2;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1f2937;
+    padding: 13px 14px;
+    font: inherit;
+    font-size: 1.05rem;
+    font-weight: 680;
+    cursor: pointer;
+  }
+
+  .matrix-presets button:hover,
+  .matrix-action:hover {
+    background: #edf2f7;
+  }
+
+  .matrix-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .matrix-action-primary {
+    background: #111827;
+    border-color: #111827;
+    color: #ffffff;
+  }
+
+  .matrix-action-primary:hover {
+    background: #273244;
+  }
+
+  .matrix-stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .matrix-stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid #e3e7ef;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 1.08rem;
+    color: #4b5565;
+  }
+
+  .matrix-stat strong {
+    color: #111827;
+    font-size: 1.35rem;
+    font-weight: 760;
+  }
+
+  .matrix-stage {
+    min-width: 0;
+    padding: 16px;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .matrix-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+    align-items: center;
+    color: #4b5565;
+    font-size: 1rem;
+  }
+
+  .matrix-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+  }
+
+  .legend-line {
+    width: 32px;
+    height: 5px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  .matrix-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 560px;
+    background: #ffffff;
+  }
+
+  .matrix-playground:fullscreen {
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .matrix-playground:fullscreen .matrix-playground-shell {
+    min-height: calc(100vh - 140px);
+  }
+
+  .matrix-playground:fullscreen .matrix-canvas {
+    min-height: calc(100vh - 230px);
+  }
+
+  @media (max-width: 980px) {
+    .matrix-playground-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .matrix-canvas {
+      min-height: 520px;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .matrix-playground {
+      padding: 10px;
+    }
+
+    .matrix-playground-header {
+      display: grid;
+    }
+
+    .matrix-input-grid,
+    .matrix-presets,
+    .matrix-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .matrix-canvas {
+      min-height: 430px;
+    }
+  }
+</style>
+
+<div class="matrix-playground" id="matrix-playground">
+  <header class="matrix-playground-header">
+    <div>
+      <h1 class="matrix-playground-title">Matrix Transformation Playground</h1>
+      <p class="matrix-playground-subtitle">Change the entries of a 2x2 matrix and watch the grid, basis vectors, unit square, and arrow-shaped region transform.</p>
+    </div>
+    <a class="matrix-action" href="linear-transformations.html">Back to chapter</a>
+  </header>
+
+  <div class="matrix-playground-shell">
+    <section class="matrix-panel" aria-label="Matrix controls">
+      <div class="matrix-controls-title">Matrix entries</div>
+      <div class="matrix-input-grid">
+        <label>a<input id="matrix-a" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>b<input id="matrix-b" type="number" step="0.1" value="0.6" inputmode="decimal"></label>
+        <label>c<input id="matrix-c" type="number" step="0.1" value="-0.3" inputmode="decimal"></label>
+        <label>d<input id="matrix-d" type="number" step="0.1" value="1" inputmode="decimal"></label>
+      </div>
+
+      <div class="matrix-display" aria-label="Current matrix">
+        <span class="matrix-bracket">[</span>
+        <span id="display-a">1</span>
+        <span id="display-b">0.6</span>
+        <span class="matrix-bracket">]</span>
+        <span id="display-c">-0.3</span>
+        <span id="display-d">1</span>
+      </div>
+
+      <div class="matrix-presets" aria-label="Preset matrices">
+        <button type="button" data-matrix="1,0,0,1">Identity</button>
+        <button type="button" data-matrix="1,0.8,0,1">Shear</button>
+        <button type="button" data-matrix="0,-1,1,0">Rotate 90</button>
+        <button type="button" data-matrix="1,0,0,-1">Reflect</button>
+        <button type="button" data-matrix="1,0,0,0">Project</button>
+        <button type="button" data-matrix="1.2,0.7,-0.4,0.9">Mixed</button>
+      </div>
+
+      <div class="matrix-actions">
+        <button type="button" class="matrix-action" id="matrix-reset">Reset</button>
+        <button type="button" class="matrix-action matrix-action-primary" id="matrix-fullscreen">Fullscreen</button>
+      </div>
+
+      <div class="matrix-stats" aria-live="polite">
+        <div class="matrix-stat"><span>determinant</span><strong id="matrix-det">1.00</strong></div>
+        <div class="matrix-stat"><span>area scale</span><strong id="matrix-area">1.00</strong></div>
+        <div class="matrix-stat"><span>orientation</span><strong id="matrix-orientation">preserved</strong></div>
+      </div>
+    </section>
+
+    <section class="matrix-stage" aria-label="Transformed grid visualization">
+      <div class="matrix-legend">
+        <span><i class="legend-line" style="background:#cfd6e3"></i>original grid</span>
+        <span><i class="legend-line" style="background:#2f6fdd"></i>image of vertical lines</span>
+        <span><i class="legend-line" style="background:#e07a2f"></i>image of horizontal lines</span>
+        <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
+        <span><i class="legend-line" style="background:#7c3aed"></i>transformed arrow shape</span>
+      </div>
+      <svg class="matrix-canvas" id="matrix-svg" viewBox="0 0 1000 760" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const playground = document.getElementById("matrix-playground");
+  const svg = document.getElementById("matrix-svg");
+  const inputs = {
+    a: document.getElementById("matrix-a"),
+    b: document.getElementById("matrix-b"),
+    c: document.getElementById("matrix-c"),
+    d: document.getElementById("matrix-d"),
+  };
+  const displays = {
+    a: document.getElementById("display-a"),
+    b: document.getElementById("display-b"),
+    c: document.getElementById("display-c"),
+    d: document.getElementById("display-d"),
+  };
+  const detEl = document.getElementById("matrix-det");
+  const areaEl = document.getElementById("matrix-area");
+  const orientationEl = document.getElementById("matrix-orientation");
+  const resetButton = document.getElementById("matrix-reset");
+  const fullscreenButton = document.getElementById("matrix-fullscreen");
+  const presets = document.querySelectorAll("#matrix-playground [data-matrix]");
+
+  const width = 1000;
+  const height = 760;
+  const margin = 70;
+  const gridExtent = 4;
+  const defaultMatrix = [1, 0.6, -0.3, 1];
+  const arrowShape = [
+    [-2.2, -0.55],
+    [0.15, -0.55],
+    [0.15, -1.05],
+    [1.35, 0],
+    [0.15, 1.05],
+    [0.15, 0.55],
+    [-2.2, 0.55],
+  ];
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  function numberFrom(input, fallback) {
+    const value = Number(input.value);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function formatNumber(value) {
+    return Number(value.toFixed(3)).toString();
+  }
+
+  function currentMatrix() {
+    return [
+      numberFrom(inputs.a, 0),
+      numberFrom(inputs.b, 0),
+      numberFrom(inputs.c, 0),
+      numberFrom(inputs.d, 0),
+    ];
+  }
+
+  function applyMatrix(matrix, point) {
+    const [a, b, c, d] = matrix;
+    const [x, y] = point;
+    return [a * x + b * y, c * x + d * y];
+  }
+
+  function linePoints(matrix) {
+    const points = [];
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      points.push(applyMatrix(matrix, [i, -gridExtent]));
+      points.push(applyMatrix(matrix, [i, gridExtent]));
+      points.push(applyMatrix(matrix, [-gridExtent, i]));
+      points.push(applyMatrix(matrix, [gridExtent, i]));
+    }
+    points.push([-gridExtent, -gridExtent], [gridExtent, gridExtent]);
+    points.push(applyMatrix(matrix, [1, 0]), applyMatrix(matrix, [0, 1]));
+    points.push(...arrowShape);
+    points.push(...arrowShape.map((point) => applyMatrix(matrix, point)));
+    return points;
+  }
+
+  function viewport(matrix) {
+    const points = linePoints(matrix);
+    const maxAbs = Math.max(
+      1,
+      ...points.map(([x, y]) => Math.max(Math.abs(x), Math.abs(y)))
+    );
+    const world = Math.ceil(maxAbs * 1.15);
+    const scale = Math.min((width - 2 * margin) / (2 * world), (height - 2 * margin) / (2 * world));
+
+    return {
+      project([x, y]) {
+        return [
+          width / 2 + x * scale,
+          height / 2 - y * scale,
+        ];
+      },
+    };
+  }
+
+  function svgEl(name, attrs = {}) {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const [key, value] of Object.entries(attrs)) {
+      node.setAttribute(key, value);
+    }
+    return node;
+  }
+
+  function addLine(group, view, p1, p2, attrs) {
+    const [x1, y1] = view.project(p1);
+    const [x2, y2] = view.project(p2);
+    group.appendChild(svgEl("line", { x1, y1, x2, y2, ...attrs }));
+  }
+
+  function addPolyline(group, view, points, attrs) {
+    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
+    group.appendChild(svgEl("polyline", { points: projected, ...attrs }));
+  }
+
+  function addPolygon(group, view, points, attrs) {
+    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
+    group.appendChild(svgEl("polygon", { points: projected, ...attrs }));
+  }
+
+  function addArrowVector(group, view, start, end, color, label) {
+    addLine(group, view, start, end, {
+      stroke: color,
+      "stroke-width": 5.2,
+      "stroke-linecap": "round",
+      "marker-end": `url(#arrow-${color.slice(1)})`,
+    });
+
+    const [x, y] = view.project(end);
+    const text = svgEl("text", {
+      x: x + 12,
+      y: y - 12,
+      fill: color,
+      "font-size": 24,
+      "font-weight": 760,
+    });
+    text.textContent = label;
+    group.appendChild(text);
+  }
+
+  function marker(color) {
+    return `
+      <marker id="arrow-${color.slice(1)}" markerWidth="11" markerHeight="11" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L8,3 z" fill="${color}" />
+      </marker>
+    `;
+  }
+
+  function render() {
+    const matrix = currentMatrix();
+    const [a, b, c, d] = matrix;
+    const det = a * d - b * c;
+    const view = viewport(matrix);
+
+    svg.innerHTML = `
+      <defs>
+        ${marker("#159a8a")}
+        ${marker("#b45309")}
+      </defs>
+      <rect width="${width}" height="${height}" fill="#ffffff"></rect>
+    `;
+
+    const original = svgEl("g");
+    const transformed = svgEl("g");
+    const foreground = svgEl("g");
+    svg.append(original, transformed, foreground);
+
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      const strong = i === 0;
+      addLine(original, view, [i, -gridExtent], [i, gridExtent], {
+        stroke: strong ? "#9aa4b2" : "#cfd6e3",
+        "stroke-width": strong ? 2.2 : 1.2,
+      });
+      addLine(original, view, [-gridExtent, i], [gridExtent, i], {
+        stroke: strong ? "#9aa4b2" : "#cfd6e3",
+        "stroke-width": strong ? 2.2 : 1.2,
+      });
+    }
+
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      const verticalStart = applyMatrix(matrix, [i, -gridExtent]);
+      const verticalEnd = applyMatrix(matrix, [i, gridExtent]);
+      const horizontalStart = applyMatrix(matrix, [-gridExtent, i]);
+      const horizontalEnd = applyMatrix(matrix, [gridExtent, i]);
+      addLine(transformed, view, verticalStart, verticalEnd, {
+        stroke: i === 0 ? "#184fa3" : "#2f6fdd",
+        "stroke-width": i === 0 ? 3.6 : 2.1,
+        opacity: 0.88,
+      });
+      addLine(transformed, view, horizontalStart, horizontalEnd, {
+        stroke: i === 0 ? "#b45309" : "#e07a2f",
+        "stroke-width": i === 0 ? 3.6 : 2.1,
+        opacity: 0.88,
+      });
+    }
+
+    addPolygon(original, view, arrowShape, {
+      fill: "rgba(107, 114, 128, 0.08)",
+      stroke: "#6b7280",
+      "stroke-width": 2.4,
+      "stroke-dasharray": "9 8",
+      "stroke-linejoin": "round",
+    });
+
+    const arrowImage = arrowShape.map((point) => applyMatrix(matrix, point));
+    addPolygon(foreground, view, arrowImage, {
+      fill: "rgba(124, 58, 237, 0.18)",
+      stroke: "#7c3aed",
+      "stroke-width": 4,
+      "stroke-linejoin": "round",
+    });
+
+    const square = [
+      applyMatrix(matrix, [0, 0]),
+      applyMatrix(matrix, [1, 0]),
+      applyMatrix(matrix, [1, 1]),
+      applyMatrix(matrix, [0, 1]),
+      applyMatrix(matrix, [0, 0]),
+    ];
+    addPolyline(foreground, view, square, {
+      fill: "rgba(21, 154, 138, 0.14)",
+      stroke: "#159a8a",
+      "stroke-width": 3.6,
+      "stroke-linejoin": "round",
+    });
+
+    addArrowVector(foreground, view, [0, 0], applyMatrix(matrix, [1, 0]), "#159a8a", "Ae1");
+    addArrowVector(foreground, view, [0, 0], applyMatrix(matrix, [0, 1]), "#b45309", "Ae2");
+
+    const origin = view.project([0, 0]);
+    foreground.appendChild(svgEl("circle", {
+      cx: origin[0],
+      cy: origin[1],
+      r: 6,
+      fill: "#111827",
+    }));
+
+    detEl.textContent = det.toFixed(3);
+    areaEl.textContent = Math.abs(det).toFixed(3);
+    orientationEl.textContent =
+      Math.abs(det) < 1e-9 ? "collapsed" : det > 0 ? "preserved" : "reversed";
+
+    [displays.a.textContent, displays.b.textContent, displays.c.textContent, displays.d.textContent] =
+      matrix.map(formatNumber);
+  }
+
+  function setMatrix(values) {
+    [inputs.a.value, inputs.b.value, inputs.c.value, inputs.d.value] = values;
+    render();
+  }
+
+  Object.values(inputs).forEach((input) => input.addEventListener("input", render));
+  presets.forEach((button) => {
+    button.addEventListener("click", () => setMatrix(button.dataset.matrix.split(",").map(Number)));
+  });
+  resetButton.addEventListener("click", () => setMatrix(defaultMatrix));
+  fullscreenButton.addEventListener("click", async () => {
+    if (!document.fullscreenElement) {
+      await playground.requestFullscreen();
+      fullscreenButton.textContent = "Exit fullscreen";
+    } else {
+      await document.exitFullscreen();
+      fullscreenButton.textContent = "Fullscreen";
+    }
+  });
+  document.addEventListener("fullscreenchange", () => {
+    fullscreenButton.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
+  });
+
+  render();
+})();
+</script>
+```
