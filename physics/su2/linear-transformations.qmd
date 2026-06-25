@@ -136,3 +136,55 @@ A^TA=I,
 \qquad
 \det A=1.
 $$
+
+The condition $A^TA=I$ has a direct geometric meaning: $A$ preserves dot products. For any two vectors $u$ and $v$,
+
+$$
+(Au)\cdot(Av)
+=(Au)^T(Av)
+=u^TA^TAv.
+$$
+
+If $A^TA=I$, then
+
+$$
+(Au)\cdot(Av)=u^Tv=u\cdot v.
+$$
+
+This implies that lengths are preserved, because
+
+$$
+\|Av\|^2=(Av)\cdot(Av)=v\cdot v=\|v\|^2.
+$$
+
+It also implies that angles are preserved, since angles are determined by dot products:
+
+$$
+u\cdot v=\|u\|\,\|v\|\cos\theta.
+$$
+
+There is also a useful column-vector interpretation. If
+
+$$
+A=\begin{pmatrix} | & | \\ a_1 & a_2 \\ | & | \end{pmatrix},
+$$
+
+then
+
+$$
+A^TA=
+\begin{pmatrix}
+a_1\cdot a_1 & a_1\cdot a_2\\
+a_2\cdot a_1 & a_2\cdot a_2
+\end{pmatrix}.
+$$
+
+So $A^TA=I$ says that the columns of $A$ have length $1$ and are perpendicular:
+
+$$
+a_1\cdot a_1=1,\qquad
+a_2\cdot a_2=1,\qquad
+a_1\cdot a_2=0.
+$$
+
+In other words, $A$ sends the standard basis to another orthonormal basis. In two dimensions, such a transformation can only rotate or reflect the plane. The extra condition $\det A=1$ rules out reflections, leaving rotations.

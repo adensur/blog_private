@@ -331,6 +331,43 @@ A^TA=I,
 \qquad
 \det A=1.
 \]</span></p>
+<p>The condition <span class="math inline">\(A^TA=I\)</span> has a direct geometric meaning: <span class="math inline">\(A\)</span> preserves dot products. For any two vectors <span class="math inline">\(u\)</span> and <span class="math inline">\(v\)</span>,</p>
+<p><span class="math display">\[
+(Au)\cdot(Av)
+=(Au)^T(Av)
+=u^TA^TAv.
+\]</span></p>
+<p>If <span class="math inline">\(A^TA=I\)</span>, then</p>
+<p><span class="math display">\[
+(Au)\cdot(Av)=u^Tv=u\cdot v.
+\]</span></p>
+<p>This implies that lengths are preserved, because</p>
+<p><span class="math display">\[
+\|Av\|^2=(Av)\cdot(Av)=v\cdot v=\|v\|^2.
+\]</span></p>
+<p>It also implies that angles are preserved, since angles are determined by dot products:</p>
+<p><span class="math display">\[
+u\cdot v=\|u\|\,\|v\|\cos\theta.
+\]</span></p>
+<p>There is also a useful column-vector interpretation. If</p>
+<p><span class="math display">\[
+A=\begin{pmatrix} | &amp; | \\ a_1 &amp; a_2 \\ | &amp; | \end{pmatrix},
+\]</span></p>
+<p>then</p>
+<p><span class="math display">\[
+A^TA=
+\begin{pmatrix}
+a_1\cdot a_1 &amp; a_1\cdot a_2\\
+a_2\cdot a_1 &amp; a_2\cdot a_2
+\end{pmatrix}.
+\]</span></p>
+<p>So <span class="math inline">\(A^TA=I\)</span> says that the columns of <span class="math inline">\(A\)</span> have length <span class="math inline">\(1\)</span> and are perpendicular:</p>
+<p><span class="math display">\[
+a_1\cdot a_1=1,\qquad
+a_2\cdot a_2=1,\qquad
+a_1\cdot a_2=0.
+\]</span></p>
+<p>In other words, <span class="math inline">\(A\)</span> sends the standard basis to another orthonormal basis. In two dimensions, such a transformation can only rotate or reflect the plane. The extra condition <span class="math inline">\(\det A=1\)</span> rules out reflections, leaving rotations.</p>
 
 
 </section>
