@@ -4,45 +4,143 @@ title: "Linear Transformations"
 
 # Linear Transformations in $\mathbb{R}^2$
 
-A linear transformation $T:\mathbb{R}^2\to\mathbb{R}^2$ can be represented by a matrix
+Check out this interactive [playground](matrix-transform-playground.qmd).
+
+## Identity Matrix
+
+The first useful special case is the identity matrix:
 
 $$
-A=\begin{pmatrix} a & b \\ c & d \end{pmatrix}.
-$$
-
-Using column vectors, the transformation is
-
-$$
-T\begin{pmatrix}x\\y\end{pmatrix}
-=
-A\begin{pmatrix}x\\y\end{pmatrix}
-=
+I_2=
 \begin{pmatrix}
-ax+by \\
-cx+dy
+1 & 0 \\
+0 & 1
 \end{pmatrix}.
 $$
 
-The first column of $A$ is where the basis vector $e_1=\begin{pmatrix}1\\0\end{pmatrix}$ goes. The second column is where $e_2=\begin{pmatrix}0\\1\end{pmatrix}$ goes:
+It is called the identity matrix because it leaves every vector exactly as it was. For an arbitrary vector $v=\begin{pmatrix}x\\y\end{pmatrix}$,
 
 $$
-A e_1=\begin{pmatrix}a\\c\end{pmatrix},
+I_2v
+=
+\begin{pmatrix}
+1 & 0 \\
+0 & 1
+\end{pmatrix}
+\begin{pmatrix}
+x\\y
+\end{pmatrix}
+=
+\begin{pmatrix}
+1x+0y\\
+0x+1y
+\end{pmatrix}
+=
+\begin{pmatrix}
+x\\y
+\end{pmatrix}.
+$$
+
+In coordinate form,
+
+$$
+x'=x,\qquad y'=y.
+$$
+
+The basis vectors are also unchanged:
+
+$$
+I_2e_1=e_1,
 \qquad
-A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
+I_2e_2=e_2.
 $$
 
-The visual way to read this is: the matrix tells us where the coordinate axes, grid lines, basis vectors, and every point of a shape go.
-
-:::{.callout-note}
-Open the full-screen playground: [Matrix Transformation Playground](matrix-transform-playground.qmd)
-:::
-
-In the playground, the grey grid is the original coordinate grid; the blue/orange grid is its image under $A$. The faint grey arrow is an asymmetric test shape, and the purple arrow is its image under the same matrix.
-
-The determinant is a compact summary of what the map does to area and orientation:
+For example,
 
 $$
-\det A = ad-bc.
+I_2
+\begin{pmatrix}
+2\\-1
+\end{pmatrix}
+=
+\begin{pmatrix}
+2\\-1
+\end{pmatrix}.
 $$
 
-If $\det A>0$, orientation is preserved. If $\det A<0$, orientation is reversed. If $\det A=0$, the plane collapses onto a line or point, so the transformation is not invertible.
+The determinant is
+
+$$
+\det(I_2)=1.
+$$
+
+So the identity transformation preserves lengths, angles, areas, orientation, and position. Nothing moves.
+
+Here is the picture:
+
+```{=html}
+<style>
+  .identity-demo {
+    margin: 1rem 0 1.5rem;
+    border: 1px solid #d6dde8;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  .identity-demo svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>
+
+<div class="identity-demo">
+  <svg viewBox="0 0 960 360" role="img" aria-label="Identity transformation leaves a grid and arrow-shaped region unchanged">
+    <defs>
+      <g id="identity-grid">
+        <rect x="0" y="0" width="280" height="240" rx="8" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"/>
+        <g stroke="#d8dee8" stroke-width="1">
+          <line x1="56" y1="0" x2="56" y2="240"/>
+          <line x1="112" y1="0" x2="112" y2="240"/>
+          <line x1="168" y1="0" x2="168" y2="240"/>
+          <line x1="224" y1="0" x2="224" y2="240"/>
+          <line x1="0" y1="48" x2="280" y2="48"/>
+          <line x1="0" y1="96" x2="280" y2="96"/>
+          <line x1="0" y1="144" x2="280" y2="144"/>
+          <line x1="0" y1="192" x2="280" y2="192"/>
+        </g>
+        <g stroke="#9aa4b2" stroke-width="2">
+          <line x1="140" y1="0" x2="140" y2="240"/>
+          <line x1="0" y1="120" x2="280" y2="120"/>
+        </g>
+      </g>
+      <polygon id="identity-arrow" points="30,98 156,98 156,70 245,120 156,170 156,142 30,142"/>
+    </defs>
+
+    <rect width="960" height="360" fill="#f7f9fc"/>
+
+    <g transform="translate(80 70)">
+      <text x="0" y="-22" fill="#111827" font-size="22" font-weight="700">Before</text>
+      <use href="#identity-grid"/>
+      <use href="#identity-arrow" fill="rgba(107,114,128,0.14)" stroke="#6b7280" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+
+    <g transform="translate(600 70)">
+      <text x="0" y="-22" fill="#111827" font-size="22" font-weight="700">After applying I<tspan baseline-shift="sub" font-size="14">2</tspan></text>
+      <use href="#identity-grid"/>
+      <use href="#identity-arrow" fill="rgba(124,58,237,0.18)" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+
+    <text x="480" y="190" text-anchor="middle" fill="#4b5565" font-size="26" font-weight="700">same</text>
+    <path d="M380 180 H565" fill="none" stroke="#4b5565" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+    <defs>
+      <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#4b5565"/>
+      </marker>
+    </defs>
+  </svg>
+</div>
+```
+
+The two panels are intentionally identical. Applying $I_2$ does not rotate, stretch, shear, reflect, or translate anything.

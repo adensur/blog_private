@@ -193,7 +193,10 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#linear-transformations-in-mathbbr2" id="toc-linear-transformations-in-mathbbr2" class="nav-link active" data-scroll-target="#linear-transformations-in-mathbbr2"><span class="header-section-number">1</span> Linear Transformations in <span class="math inline">\(\mathbb{R}^2\)</span></a></li>
+  <li><a href="#linear-transformations-in-mathbbr2" id="toc-linear-transformations-in-mathbbr2" class="nav-link active" data-scroll-target="#linear-transformations-in-mathbbr2"><span class="header-section-number">1</span> Linear Transformations in <span class="math inline">\(\mathbb{R}^2\)</span></a>
+  <ul class="collapse">
+  <li><a href="#identity-matrix" id="toc-identity-matrix" class="nav-link" data-scroll-target="#identity-matrix"><span class="header-section-number">1.1</span> Identity Matrix</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -221,49 +224,131 @@ window.Quarto = {
 
 <section id="linear-transformations-in-mathbbr2" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Linear Transformations in <span class="math inline">\(\mathbb{R}^2\)</span></h1>
-<p>A linear transformation <span class="math inline">\(T:\mathbb{R}^2\to\mathbb{R}^2\)</span> can be represented by a matrix</p>
+<p>Check out this interactive <a href="./matrix-transform-playground.html">playground</a>.</p>
+<section id="identity-matrix" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="identity-matrix"><span class="header-section-number">1.1</span> Identity Matrix</h2>
+<p>The first useful special case is the identity matrix:</p>
 <p><span class="math display">\[
-A=\begin{pmatrix} a &amp; b \\ c &amp; d \end{pmatrix}.
-\]</span></p>
-<p>Using column vectors, the transformation is</p>
-<p><span class="math display">\[
-T\begin{pmatrix}x\\y\end{pmatrix}
-=
-A\begin{pmatrix}x\\y\end{pmatrix}
-=
+I_2=
 \begin{pmatrix}
-ax+by \\
-cx+dy
+1 &amp; 0 \\
+0 &amp; 1
 \end{pmatrix}.
 \]</span></p>
-<p>The first column of <span class="math inline">\(A\)</span> is where the basis vector <span class="math inline">\(e_1=\begin{pmatrix}1\\0\end{pmatrix}\)</span> goes. The second column is where <span class="math inline">\(e_2=\begin{pmatrix}0\\1\end{pmatrix}\)</span> goes:</p>
+<p>It is called the identity matrix because it leaves every vector exactly as it was. For an arbitrary vector <span class="math inline">\(v=\begin{pmatrix}x\\y\end{pmatrix}\)</span>,</p>
 <p><span class="math display">\[
-A e_1=\begin{pmatrix}a\\c\end{pmatrix},
+I_2v
+=
+\begin{pmatrix}
+1 &amp; 0 \\
+0 &amp; 1
+\end{pmatrix}
+\begin{pmatrix}
+x\\y
+\end{pmatrix}
+=
+\begin{pmatrix}
+1x+0y\\
+0x+1y
+\end{pmatrix}
+=
+\begin{pmatrix}
+x\\y
+\end{pmatrix}.
+\]</span></p>
+<p>In coordinate form,</p>
+<p><span class="math display">\[
+x'=x,\qquad y'=y.
+\]</span></p>
+<p>The basis vectors are also unchanged:</p>
+<p><span class="math display">\[
+I_2e_1=e_1,
 \qquad
-A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
+I_2e_2=e_2.
 \]</span></p>
-<p>The visual way to read this is: the matrix tells us where the coordinate axes, grid lines, basis vectors, and every point of a shape go.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-Note
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>Open the full-screen playground: <a href="./matrix-transform-playground.html">Matrix Transformation Playground</a></p>
-</div>
-</div>
-<p>In the playground, the grey grid is the original coordinate grid; the blue/orange grid is its image under <span class="math inline">\(A\)</span>. The faint grey arrow is an asymmetric test shape, and the purple arrow is its image under the same matrix.</p>
-<p>The determinant is a compact summary of what the map does to area and orientation:</p>
+<p>For example,</p>
 <p><span class="math display">\[
-\det A = ad-bc.
+I_2
+\begin{pmatrix}
+2\\-1
+\end{pmatrix}
+=
+\begin{pmatrix}
+2\\-1
+\end{pmatrix}.
 \]</span></p>
-<p>If <span class="math inline">\(\det A&gt;0\)</span>, orientation is preserved. If <span class="math inline">\(\det A&lt;0\)</span>, orientation is reversed. If <span class="math inline">\(\det A=0\)</span>, the plane collapses onto a line or point, so the transformation is not invertible.</p>
+<p>The determinant is</p>
+<p><span class="math display">\[
+\det(I_2)=1.
+\]</span></p>
+<p>So the identity transformation preserves lengths, angles, areas, orientation, and position. Nothing moves.</p>
+<p>Here is the picture:</p>
+<style>
+  .identity-demo {
+    margin: 1rem 0 1.5rem;
+    border: 1px solid #d6dde8;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  .identity-demo svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>
+
+<div class="identity-demo">
+  <svg viewbox="0 0 960 360" role="img" aria-label="Identity transformation leaves a grid and arrow-shaped region unchanged">
+    <defs>
+      <g id="identity-grid">
+        <rect x="0" y="0" width="280" height="240" rx="8" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"></rect>
+        <g stroke="#d8dee8" stroke-width="1">
+          <line x1="56" y1="0" x2="56" y2="240"></line>
+          <line x1="112" y1="0" x2="112" y2="240"></line>
+          <line x1="168" y1="0" x2="168" y2="240"></line>
+          <line x1="224" y1="0" x2="224" y2="240"></line>
+          <line x1="0" y1="48" x2="280" y2="48"></line>
+          <line x1="0" y1="96" x2="280" y2="96"></line>
+          <line x1="0" y1="144" x2="280" y2="144"></line>
+          <line x1="0" y1="192" x2="280" y2="192"></line>
+        </g>
+        <g stroke="#9aa4b2" stroke-width="2">
+          <line x1="140" y1="0" x2="140" y2="240"></line>
+          <line x1="0" y1="120" x2="280" y2="120"></line>
+        </g>
+      </g>
+      <polygon id="identity-arrow" points="30,98 156,98 156,70 245,120 156,170 156,142 30,142"></polygon>
+    </defs>
+
+    <rect width="960" height="360" fill="#f7f9fc"></rect>
+
+    <g transform="translate(80 70)">
+      <text x="0" y="-22" fill="#111827" font-size="22" font-weight="700">Before</text>
+      <use href="#identity-grid"></use>
+      <use href="#identity-arrow" fill="rgba(107,114,128,0.14)" stroke="#6b7280" stroke-width="3" stroke-linejoin="round"></use>
+    </g>
+
+    <g transform="translate(600 70)">
+      <text x="0" y="-22" fill="#111827" font-size="22" font-weight="700">After applying I<tspan baseline-shift="sub" font-size="14">2</tspan></text>
+      <use href="#identity-grid"></use>
+      <use href="#identity-arrow" fill="rgba(124,58,237,0.18)" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round"></use>
+    </g>
+
+    <text x="480" y="190" text-anchor="middle" fill="#4b5565" font-size="26" font-weight="700">same</text>
+    <path d="M380 180 H565" fill="none" stroke="#4b5565" stroke-width="2.5" marker-end="url(#arrowhead)"></path>
+    <defs>
+      <marker id="arrowhead" markerwidth="10" markerheight="10" refx="8" refy="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#4b5565"></path>
+      </marker>
+    </defs>
+  </svg>
+</div>
+<p>The two panels are intentionally identical. Applying <span class="math inline">\(I_2\)</span> does not rotate, stretch, shear, reflect, or translate anything.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
