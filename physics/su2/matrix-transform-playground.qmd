@@ -58,10 +58,10 @@ number-sections: false
   }
 
   .matrix-panel {
-    padding: 10px;
-    display: grid;
-    grid-template-columns: auto minmax(280px, 460px) minmax(280px, 1fr) minmax(260px, 360px) auto;
-    gap: 10px;
+    padding: 9px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
     align-items: center;
   }
 
@@ -76,6 +76,7 @@ number-sections: false
     display: grid;
     grid-template-columns: repeat(4, minmax(62px, 1fr));
     gap: 8px;
+    flex: 0 1 420px;
   }
 
   .matrix-input-grid label {
@@ -123,13 +124,7 @@ number-sections: false
     color: #64748b;
   }
 
-  .matrix-presets {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(62px, 1fr));
-    gap: 6px;
-  }
-
-  .matrix-presets button,
+  .matrix-preset,
   .matrix-action {
     border: 1px solid #b9c3d2;
     border-radius: 6px;
@@ -142,7 +137,12 @@ number-sections: false
     cursor: pointer;
   }
 
-  .matrix-presets button:hover,
+  .matrix-preset {
+    flex: 0 1 160px;
+    min-height: 36px;
+  }
+
+  .matrix-preset:hover,
   .matrix-action:hover {
     background: #edf2f7;
   }
@@ -151,6 +151,7 @@ number-sections: false
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
+    flex: 0 1 210px;
   }
 
   .matrix-action-primary {
@@ -167,6 +168,8 @@ number-sections: false
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
+    flex: 1 1 300px;
+    min-width: 280px;
   }
 
   .matrix-stat {
@@ -237,14 +240,9 @@ number-sections: false
   }
 
   @media (max-width: 1180px) {
-    .matrix-panel {
-      grid-template-columns: auto minmax(260px, 1fr) minmax(220px, 1fr);
-    }
-    .matrix-actions {
-      grid-column: 1 / span 2;
-    }
     .matrix-stats {
-      grid-column: 3;
+      order: 10;
+      flex-basis: 100%;
     }
   }
 
@@ -259,7 +257,6 @@ number-sections: false
       grid-template-columns: 1fr;
     }
     .matrix-input-grid,
-    .matrix-presets,
     .matrix-actions,
     .matrix-stats {
       grid-template-columns: 1fr 1fr;
@@ -299,14 +296,15 @@ number-sections: false
         <span id="display-d">1</span>
       </div>
 
-      <div class="matrix-presets" aria-label="Preset matrices">
-        <button type="button" data-matrix="1,0,0,1">Identity</button>
-        <button type="button" data-matrix="1,0.8,0,1">Shear</button>
-        <button type="button" data-matrix="0,-1,1,0">Rotate 90</button>
-        <button type="button" data-matrix="1,0,0,-1">Reflect</button>
-        <button type="button" data-matrix="1,0,0,0">Project</button>
-        <button type="button" data-matrix="1.2,0.7,-0.4,0.9">Mixed</button>
-      </div>
+      <select class="matrix-preset" id="matrix-preset" aria-label="Preset matrix">
+        <option value="">Preset...</option>
+        <option value="1,0,0,1">Identity</option>
+        <option value="1,0.8,0,1">Shear</option>
+        <option value="0,-1,1,0">Rotate 90</option>
+        <option value="1,0,0,-1">Reflect</option>
+        <option value="1,0,0,0">Project</option>
+        <option value="1.2,0.7,-0.4,0.9">Mixed</option>
+      </select>
 
       <div class="matrix-actions">
         <button type="button" class="matrix-action" id="matrix-reset">Reset</button>
@@ -323,8 +321,8 @@ number-sections: false
     <section class="matrix-stage" aria-label="Transformed grid visualization">
       <div class="matrix-legend">
         <span><i class="legend-line" style="background:#cfd6e3"></i>original grid</span>
-        <span><i class="legend-line" style="background:#2f6fdd"></i>image of vertical lines</span>
-        <span><i class="legend-line" style="background:#e07a2f"></i>image of horizontal lines</span>
+        <span><i class="legend-line" style="background:#2f6fdd"></i>transformed vertical lines</span>
+        <span><i class="legend-line" style="background:#e07a2f"></i>transformed horizontal lines</span>
         <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
         <span><i class="legend-line" style="background:#7c3aed"></i>transformed arrow shape</span>
       </div>
@@ -354,7 +352,7 @@ number-sections: false
   const orientationEl = document.getElementById("matrix-orientation");
   const resetButton = document.getElementById("matrix-reset");
   const fullscreenButton = document.getElementById("matrix-fullscreen");
-  const presets = document.querySelectorAll("#matrix-playground [data-matrix]");
+  const presetSelect = document.getElementById("matrix-preset");
 
   const width = 1600;
   const height = 940;
@@ -396,32 +394,35 @@ number-sections: false
     return [a * x + b * y, c * x + d * y];
   }
 
-  function linePoints(matrix) {
+  function identity(point) {
+    return point;
+  }
+
+  function linePoints(transform) {
     const points = [];
     for (let i = -gridExtent; i <= gridExtent; i += 1) {
-      points.push(applyMatrix(matrix, [i, -gridExtent]));
-      points.push(applyMatrix(matrix, [i, gridExtent]));
-      points.push(applyMatrix(matrix, [-gridExtent, i]));
-      points.push(applyMatrix(matrix, [gridExtent, i]));
+      points.push(transform([i, -gridExtent]));
+      points.push(transform([i, gridExtent]));
+      points.push(transform([-gridExtent, i]));
+      points.push(transform([gridExtent, i]));
     }
     points.push([-gridExtent, -gridExtent], [gridExtent, gridExtent]);
-    points.push(applyMatrix(matrix, [1, 0]), applyMatrix(matrix, [0, 1]));
-    points.push(...arrowShape);
-    points.push(...arrowShape.map((point) => applyMatrix(matrix, point)));
+    points.push(transform([1, 0]), transform([0, 1]));
+    points.push(...arrowShape.map(transform));
     return points;
   }
 
-  function viewport(matrix) {
-    const points = linePoints(matrix);
+  function viewport(panel, transform) {
+    const points = linePoints(transform);
     const maxX = Math.max(1, ...points.map(([x]) => Math.abs(x)));
     const maxY = Math.max(1, ...points.map(([, y]) => Math.abs(y)));
-    const scale = Math.min((width - 2 * margin) / (2 * maxX), (height - 2 * margin) / (2 * maxY));
+    const scale = Math.min((panel.width - 2 * margin) / (2 * maxX), (panel.height - 2 * margin) / (2 * maxY));
 
     return {
       project([x, y]) {
         return [
-          width / 2 + x * scale,
-          height / 2 - y * scale,
+          panel.x + panel.width / 2 + x * scale,
+          panel.y + panel.height / 2 - y * scale,
         ];
       },
     };
@@ -479,11 +480,90 @@ number-sections: false
     `;
   }
 
+  function drawPanelFrame(group, panel, title) {
+    group.appendChild(svgEl("rect", {
+      x: panel.x,
+      y: panel.y,
+      width: panel.width,
+      height: panel.height,
+      rx: 18,
+      fill: "#ffffff",
+      stroke: "#d6dde8",
+      "stroke-width": 2,
+    }));
+
+    const label = svgEl("text", {
+      x: panel.x + 24,
+      y: panel.y + 42,
+      fill: "#111827",
+      "font-size": 28,
+      "font-weight": 760,
+    });
+    label.textContent = title;
+    group.appendChild(label);
+  }
+
+  function drawGrid(group, view, transform, verticalColor, horizontalColor, baseOpacity) {
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      const strong = i === 0;
+      addLine(group, view, transform([i, -gridExtent]), transform([i, gridExtent]), {
+        stroke: strong ? verticalColor.strong : verticalColor.light,
+        "stroke-width": strong ? 3.6 : 2,
+        opacity: strong ? 0.95 : baseOpacity,
+      });
+      addLine(group, view, transform([-gridExtent, i]), transform([gridExtent, i]), {
+        stroke: strong ? horizontalColor.strong : horizontalColor.light,
+        "stroke-width": strong ? 3.6 : 2,
+        opacity: strong ? 0.95 : baseOpacity,
+      });
+    }
+  }
+
+  function drawShapePanel(group, panel, title, transform, options) {
+    drawPanelFrame(group, panel, title);
+    const view = viewport(panel, transform);
+    drawGrid(group, view, transform, options.verticalColor, options.horizontalColor, options.gridOpacity);
+
+    addPolygon(group, view, arrowShape.map(transform), {
+      fill: options.arrowFill,
+      stroke: options.arrowStroke,
+      "stroke-width": 5,
+      "stroke-linejoin": "round",
+    });
+
+    const square = [
+      transform([0, 0]),
+      transform([1, 0]),
+      transform([1, 1]),
+      transform([0, 1]),
+      transform([0, 0]),
+    ];
+    addPolyline(group, view, square, {
+      fill: "rgba(21, 154, 138, 0.14)",
+      stroke: "#159a8a",
+      "stroke-width": 3.6,
+      "stroke-linejoin": "round",
+    });
+
+    addArrowVector(group, view, transform([0, 0]), transform([1, 0]), "#159a8a", options.e1Label);
+    addArrowVector(group, view, transform([0, 0]), transform([0, 1]), "#b45309", options.e2Label);
+
+    const origin = view.project(transform([0, 0]));
+    group.appendChild(svgEl("circle", {
+      cx: origin[0],
+      cy: origin[1],
+      r: 6,
+      fill: "#111827",
+    }));
+  }
+
   function render() {
     const matrix = currentMatrix();
     const [a, b, c, d] = matrix;
     const det = a * d - b * c;
-    const view = viewport(matrix);
+    const leftPanel = { x: 16, y: 16, width: 764, height: 908 };
+    const rightPanel = { x: 820, y: 16, width: 764, height: 908 };
+    const matrixTransform = (point) => applyMatrix(matrix, point);
 
     svg.innerHTML = `
       <defs>
@@ -493,80 +573,29 @@ number-sections: false
       <rect width="${width}" height="${height}" fill="#ffffff"></rect>
     `;
 
-    const original = svgEl("g");
-    const transformed = svgEl("g");
-    const foreground = svgEl("g");
-    svg.append(original, transformed, foreground);
+    const originalPanel = svgEl("g");
+    const transformedPanel = svgEl("g");
+    svg.append(originalPanel, transformedPanel);
 
-    for (let i = -gridExtent; i <= gridExtent; i += 1) {
-      const strong = i === 0;
-      addLine(original, view, [i, -gridExtent], [i, gridExtent], {
-        stroke: strong ? "#9aa4b2" : "#cfd6e3",
-        "stroke-width": strong ? 2.2 : 1.2,
-      });
-      addLine(original, view, [-gridExtent, i], [gridExtent, i], {
-        stroke: strong ? "#9aa4b2" : "#cfd6e3",
-        "stroke-width": strong ? 2.2 : 1.2,
-      });
-    }
-
-    for (let i = -gridExtent; i <= gridExtent; i += 1) {
-      const verticalStart = applyMatrix(matrix, [i, -gridExtent]);
-      const verticalEnd = applyMatrix(matrix, [i, gridExtent]);
-      const horizontalStart = applyMatrix(matrix, [-gridExtent, i]);
-      const horizontalEnd = applyMatrix(matrix, [gridExtent, i]);
-      addLine(transformed, view, verticalStart, verticalEnd, {
-        stroke: i === 0 ? "#184fa3" : "#2f6fdd",
-        "stroke-width": i === 0 ? 3.6 : 2.1,
-        opacity: 0.88,
-      });
-      addLine(transformed, view, horizontalStart, horizontalEnd, {
-        stroke: i === 0 ? "#b45309" : "#e07a2f",
-        "stroke-width": i === 0 ? 3.6 : 2.1,
-        opacity: 0.88,
-      });
-    }
-
-    addPolygon(original, view, arrowShape, {
-      fill: "rgba(107, 114, 128, 0.08)",
-      stroke: "#6b7280",
-      "stroke-width": 2.4,
-      "stroke-dasharray": "9 8",
-      "stroke-linejoin": "round",
+    drawShapePanel(originalPanel, leftPanel, "Original", identity, {
+      verticalColor: { strong: "#9aa4b2", light: "#cfd6e3" },
+      horizontalColor: { strong: "#9aa4b2", light: "#cfd6e3" },
+      gridOpacity: 0.92,
+      arrowFill: "rgba(107, 114, 128, 0.12)",
+      arrowStroke: "#6b7280",
+      e1Label: "e1",
+      e2Label: "e2",
     });
 
-    const arrowImage = arrowShape.map((point) => applyMatrix(matrix, point));
-    addPolygon(foreground, view, arrowImage, {
-      fill: "rgba(124, 58, 237, 0.18)",
-      stroke: "#7c3aed",
-      "stroke-width": 4,
-      "stroke-linejoin": "round",
+    drawShapePanel(transformedPanel, rightPanel, "Transformed by A", matrixTransform, {
+      verticalColor: { strong: "#184fa3", light: "#2f6fdd" },
+      horizontalColor: { strong: "#b45309", light: "#e07a2f" },
+      gridOpacity: 0.88,
+      arrowFill: "rgba(124, 58, 237, 0.2)",
+      arrowStroke: "#7c3aed",
+      e1Label: "Ae1",
+      e2Label: "Ae2",
     });
-
-    const square = [
-      applyMatrix(matrix, [0, 0]),
-      applyMatrix(matrix, [1, 0]),
-      applyMatrix(matrix, [1, 1]),
-      applyMatrix(matrix, [0, 1]),
-      applyMatrix(matrix, [0, 0]),
-    ];
-    addPolyline(foreground, view, square, {
-      fill: "rgba(21, 154, 138, 0.14)",
-      stroke: "#159a8a",
-      "stroke-width": 3.6,
-      "stroke-linejoin": "round",
-    });
-
-    addArrowVector(foreground, view, [0, 0], applyMatrix(matrix, [1, 0]), "#159a8a", "Ae1");
-    addArrowVector(foreground, view, [0, 0], applyMatrix(matrix, [0, 1]), "#b45309", "Ae2");
-
-    const origin = view.project([0, 0]);
-    foreground.appendChild(svgEl("circle", {
-      cx: origin[0],
-      cy: origin[1],
-      r: 6,
-      fill: "#111827",
-    }));
 
     detEl.textContent = det.toFixed(3);
     areaEl.textContent = Math.abs(det).toFixed(3);
@@ -583,8 +612,11 @@ number-sections: false
   }
 
   Object.values(inputs).forEach((input) => input.addEventListener("input", render));
-  presets.forEach((button) => {
-    button.addEventListener("click", () => setMatrix(button.dataset.matrix.split(",").map(Number)));
+  presetSelect.addEventListener("change", () => {
+    if (presetSelect.value) {
+      setMatrix(presetSelect.value.split(",").map(Number));
+      presetSelect.value = "";
+    }
   });
   resetButton.addEventListener("click", () => setMatrix(defaultMatrix));
   fullscreenButton.addEventListener("click", async () => {
