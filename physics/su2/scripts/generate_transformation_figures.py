@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import shutil
 import subprocess
+from html import escape
 from pathlib import Path
 
 
@@ -11,6 +12,7 @@ LINEAR_ALGEBRA_OUT_DIR = ROOT / "figures" / "linear-algebra"
 LINEAR_TRANSFORMATIONS_OUT_DIR = ROOT / "figures" / "linear-transformations"
 
 Point = tuple[float, float]
+Matrix = tuple[tuple[float, float], tuple[float, float]]
 
 
 def sample_segment(start: Point, end: Point, n: int = 80) -> list[Point]:
@@ -107,6 +109,17 @@ def circle_attrs(point: Point, x0: float, y0: float, size: float) -> tuple[float
 
 def transformed(points: list[Point], transform) -> list[Point]:
     return [transform(point) for point in points]
+
+
+def matrix_apply(matrix: Matrix, point: Point) -> Point:
+    (a, b), (c, d) = matrix
+    x, y = point
+    return a * x + b * y, c * x + d * y
+
+
+def determinant(matrix: Matrix) -> float:
+    (a, b), (c, d) = matrix
+    return a * d - b * c
 
 
 def panel(x0: float, y0: float, title: str, transform) -> str:
@@ -223,6 +236,202 @@ def identity_matrix_svg_document() -> str:
 """
 
 
+def determinant_project(point: Point, x0: float, y0: float, size: float) -> Point:
+    min_world = -2.0
+    max_world = 2.0
+    scale = size / (max_world - min_world)
+    x, y = point
+    return x0 + (x - min_world) * scale, y0 + (max_world - y) * scale
+
+
+def determinant_points_attr(points: list[Point], x0: float, y0: float, size: float) -> str:
+    return " ".join(
+        f"{x:.2f},{y:.2f}" for x, y in (determinant_project(point, x0, y0, size) for point in points)
+    )
+
+
+def determinant_line(
+    start: Point,
+    end: Point,
+    x0: float,
+    y0: float,
+    size: float,
+    class_name: str,
+    marker: str = "",
+) -> str:
+    x1, y1 = determinant_project(start, x0, y0, size)
+    x2, y2 = determinant_project(end, x0, y0, size)
+    marker_attr = f' marker-end="url(#{marker})"' if marker else ""
+    return (
+        f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
+        f'class="{class_name}"{marker_attr}/>'
+    )
+
+
+def determinant_label(
+    point: Point,
+    x0: float,
+    y0: float,
+    size: float,
+    text: str,
+    class_name: str,
+    dx: float = 8.0,
+    dy: float = -8.0,
+) -> str:
+    x, y = determinant_project(point, x0, y0, size)
+    return f'<text x="{x + dx:.2f}" y="{y + dy:.2f}" class="{class_name}">{escape(text)}</text>'
+
+
+def fmt_number(value: float) -> str:
+    if abs(value - round(value)) < 1e-9:
+        return str(int(round(value)))
+    return f"{value:.1f}"
+
+
+def matrix_label(matrix: Matrix) -> str:
+    (a, b), (c, d) = matrix
+    return f"A = [[{fmt_number(a)}, {fmt_number(b)}], [{fmt_number(c)}, {fmt_number(d)}]]"
+
+
+def determinant_panel(
+    x0: float,
+    y0: float,
+    title: str,
+    matrix: Matrix,
+    note: str,
+    det_note: str,
+) -> str:
+    size = 225.0
+    plot_x = x0 + 24.0
+    plot_y = y0 + 66.0
+    text_x = x0 + 275.0
+    det_value = determinant(matrix)
+    origin = (0.0, 0.0)
+    u = matrix_apply(matrix, (1.0, 0.0))
+    v = matrix_apply(matrix, (0.0, 1.0))
+    parallelogram = [origin, u, (u[0] + v[0], u[1] + v[1]), v]
+    title_text = escape(title)
+    matrix_text = escape(matrix_label(matrix))
+    note_text = escape(note)
+    det_note_text = escape(det_note)
+
+    parts = [
+        f'<g transform="translate({x0:.1f} {y0:.1f})">',
+        '<rect x="0" y="0" width="520" height="285" rx="8" class="det-card"/>',
+        f'<text x="22" y="34" class="det-panel-title">{title_text}</text>',
+        "</g>",
+        f'<g transform="translate({plot_x:.1f} {plot_y:.1f})">',
+        f'<rect x="0" y="0" width="{size:.1f}" height="{size:.1f}" rx="5" class="det-frame"/>',
+    ]
+
+    for tick in [-1.5, -1.0, -0.5, 0.5, 1.0, 1.5]:
+        parts.append(determinant_line((tick, -2.0), (tick, 2.0), 0, 0, size, "det-grid"))
+        parts.append(determinant_line((-2.0, tick), (2.0, tick), 0, 0, size, "det-grid"))
+
+    parts.extend(
+        [
+            determinant_line((-2.0, 0.0), (2.0, 0.0), 0, 0, size, "det-axis"),
+            determinant_line((0.0, -2.0), (0.0, 2.0), 0, 0, size, "det-axis"),
+            f'<polygon points="{determinant_points_attr([(0, 0), (1, 0), (1, 1), (0, 1)], 0, 0, size)}" '
+            'class="det-unit-square"/>',
+            f'<polygon points="{determinant_points_attr(parallelogram, 0, 0, size)}" '
+            'class="det-parallelogram"/>',
+            determinant_line(origin, u, 0, 0, size, "det-u", "det-arrow-u"),
+            determinant_line(origin, v, 0, 0, size, "det-v", "det-arrow-v"),
+            determinant_label(u, 0, 0, size, "Ae1", "det-u-label"),
+            determinant_label(v, 0, 0, size, "Ae2", "det-v-label", dx=8, dy=16),
+            "</g>",
+            f'<text x="{text_x:.1f}" y="{y0 + 82:.1f}" class="det-matrix">{matrix_text}</text>',
+            f'<text x="{text_x:.1f}" y="{y0 + 116:.1f}" class="det-summary">det A = {det_value:.1f}</text>',
+            f'<text x="{text_x:.1f}" y="{y0 + 148:.1f}" class="det-summary">area = |det A| = {abs(det_value):.1f}</text>',
+            f'<text x="{text_x:.1f}" y="{y0 + 186:.1f}" class="det-note">{note_text}</text>',
+            f'<text x="{text_x:.1f}" y="{y0 + 214:.1f}" class="det-note">{det_note_text}</text>',
+        ]
+    )
+
+    if abs(det_value) < 1e-9:
+        end = (u[0] + v[0], u[1] + v[1])
+        parts.append(
+            f'<g transform="translate({plot_x:.1f} {plot_y:.1f})">'
+            f'{determinant_line(origin, end, 0, 0, size, "det-collapse")}</g>'
+        )
+
+    return "\n".join(parts)
+
+
+def determinant_svg_document() -> str:
+    panels = [
+        determinant_panel(
+            45,
+            105,
+            "Columns span a parallelogram",
+            ((1.2, 0.4), (0.3, 1.1)),
+            "The unit square maps to this parallelogram.",
+            "Signed area is ad - bc.",
+        ),
+        determinant_panel(
+            635,
+            105,
+            "det A = 1",
+            ((1.0, 0.8), (0.0, 1.0)),
+            "Area and orientation are preserved.",
+            "This shear is not a rotation.",
+        ),
+        determinant_panel(
+            45,
+            425,
+            "det A = 0",
+            ((1.0, 0.8), (0.0, 0.0)),
+            "The square collapses to a line.",
+            "The map is not invertible.",
+        ),
+        determinant_panel(
+            635,
+            425,
+            "det A < 0",
+            ((1.0, 0.0), (0.0, -1.0)),
+            "Signed area is negative.",
+            "Orientation is reversed.",
+        ),
+    ]
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="det-title det-desc">
+  <title id="det-title">Determinant as the signed area of a transformed unit square</title>
+  <desc id="det-desc">Four panels show that a matrix maps the unit square to a parallelogram whose signed area is the determinant, including determinant one, zero, and negative cases.</desc>
+  <defs>
+    <marker id="det-arrow-u" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#0f9f8f"/>
+    </marker>
+    <marker id="det-arrow-v" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#c45a11"/>
+    </marker>
+  </defs>
+  <style>
+    .det-title {{ font: 700 28px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111827; }}
+    .det-subtitle {{ font: 500 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #4b5565; }}
+    .det-card {{ fill: #ffffff; stroke: #d6dde8; stroke-width: 1.4; }}
+    .det-panel-title {{ font: 700 20px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111827; }}
+    .det-frame {{ fill: #ffffff; stroke: #d6dde8; stroke-width: 1.2; }}
+    .det-grid {{ stroke: #dde3ec; stroke-width: 1; }}
+    .det-axis {{ stroke: #8994a5; stroke-width: 1.7; }}
+    .det-unit-square {{ fill: #6b7280; fill-opacity: 0.08; stroke: #6b7280; stroke-width: 1.8; stroke-dasharray: 5 5; }}
+    .det-parallelogram {{ fill: #7c3aed; fill-opacity: 0.18; stroke: #7c3aed; stroke-width: 3; stroke-linejoin: round; }}
+    .det-u {{ stroke: #0f9f8f; stroke-width: 4; stroke-linecap: round; }}
+    .det-v {{ stroke: #c45a11; stroke-width: 4; stroke-linecap: round; }}
+    .det-collapse {{ stroke: #7c3aed; stroke-width: 5; stroke-linecap: round; opacity: 0.85; }}
+    .det-u-label {{ font: 700 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #0f9f8f; }}
+    .det-v-label {{ font: 700 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #c45a11; }}
+    .det-matrix {{ font: 650 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #111827; }}
+    .det-summary {{ font: 700 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111827; }}
+    .det-note {{ font: 500 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #4b5565; }}
+  </style>
+  <rect width="1200" height="760" fill="#f7f9fc"/>
+  <text x="600" y="42" class="det-title" text-anchor="middle">determinant = signed area scale</text>
+  <text x="600" y="72" class="det-subtitle" text-anchor="middle">The columns Ae1 and Ae2 are the sides of the transformed unit square.</text>
+  {"".join(panels)}
+</svg>
+"""
+
+
 def main() -> None:
     LINEAR_ALGEBRA_OUT_DIR.mkdir(parents=True, exist_ok=True)
     LINEAR_TRANSFORMATIONS_OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -232,6 +441,10 @@ def main() -> None:
     svg_path.write_text(svg_document(), encoding="utf-8")
     (LINEAR_TRANSFORMATIONS_OUT_DIR / "identity-matrix.svg").write_text(
         identity_matrix_svg_document(),
+        encoding="utf-8",
+    )
+    (LINEAR_TRANSFORMATIONS_OUT_DIR / "determinant.svg").write_text(
+        determinant_svg_document(),
         encoding="utf-8",
     )
 

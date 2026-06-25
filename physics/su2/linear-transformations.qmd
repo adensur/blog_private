@@ -41,43 +41,98 @@ x\\y
 \end{pmatrix}.
 $$
 
-In coordinate form,
-
-$$
-x'=x,\qquad y'=y.
-$$
-
-The basis vectors are also unchanged:
-
-$$
-I_2e_1=e_1,
-\qquad
-I_2e_2=e_2.
-$$
-
-For example,
-
-$$
-I_2
-\begin{pmatrix}
-2\\-1
-\end{pmatrix}
-=
-\begin{pmatrix}
-2\\-1
-\end{pmatrix}.
-$$
-
-The determinant is
-
-$$
-\det(I_2)=1.
-$$
-
-So the identity transformation preserves lengths, angles, areas, orientation, and position. Nothing moves.
-
 Here is the picture:
 
 ![](figures/linear-transformations/identity-matrix.svg){fig-alt="Identity transformation leaves a grid and arrow-shaped region unchanged." width="100%"}
 
-The two panels are intentionally identical. Applying $I_2$ does not rotate, stretch, shear, reflect, or translate anything.
+## Determinant
+
+Let
+
+$$
+A=
+\begin{pmatrix}
+a & b\\
+c & d
+\end{pmatrix}.
+$$
+
+The first column is where the first basis vector goes, and the second column is where the second basis vector goes:
+
+$$
+Ae_1=
+\begin{pmatrix}
+a\\c
+\end{pmatrix},
+\qquad
+Ae_2=
+\begin{pmatrix}
+b\\d
+\end{pmatrix}.
+$$
+
+The unit square has corners $0$, $e_1$, $e_2$, and $e_1+e_2$. After applying $A$, those corners become
+
+$$
+0,\qquad
+Ae_1,\qquad
+Ae_2,\qquad
+Ae_1+Ae_2.
+$$
+
+So the image of the unit square is the parallelogram spanned by the two column vectors of $A$. The determinant
+
+$$
+\det A = ad-bc
+$$
+
+is the signed area of this parallelogram. The ordinary geometric area is
+
+$$
+\left|\det A\right|.
+$$
+
+![](figures/linear-transformations/determinant.svg){fig-alt="The determinant is the signed area of the parallelogram spanned by the transformed basis vectors, with determinant one, zero, and negative examples." width="100%"}
+
+The sign tells us about orientation:
+
+- If $\det A>0$, orientation is preserved.
+- If $\det A<0$, orientation is reversed.
+- If $\det A=0$, the square collapses to a line or point. The area is zero, so the transformation cannot be inverted.
+
+When $\det A=1$, the transformation preserves signed area. This is not the same thing as preserving lengths or angles. Rotations have determinant $1$, but they are only a small subset of determinant-one transformations.
+
+For example, every shear of the form
+
+$$
+\begin{pmatrix}
+1 & k\\
+0 & 1
+\end{pmatrix}
+$$
+
+has determinant $1$, and every reciprocal scaling
+
+$$
+\begin{pmatrix}
+s & 0\\
+0 & 1/s
+\end{pmatrix}
+\qquad (s\ne 0)
+$$
+
+also has determinant $1$. These transformations can visibly stretch or shear a shape while keeping its area unchanged.
+
+The determinant-one linear transformations form the group
+
+$$
+SL(2,\mathbb{R})=\{A\in GL(2,\mathbb{R})\mid \det A=1\}.
+$$
+
+Rotations are the stricter special case where lengths and angles are also preserved:
+
+$$
+A^TA=I,
+\qquad
+\det A=1.
+$$

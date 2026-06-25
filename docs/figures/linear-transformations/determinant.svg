@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="det-title det-desc">
+  <title id="det-title">Determinant as the signed area of a transformed unit square</title>
+  <desc id="det-desc">Four panels show that a matrix maps the unit square to a parallelogram whose signed area is the determinant, including determinant one, zero, and negative cases.</desc>
+  <defs>
+    <marker id="det-arrow-u" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#0f9f8f"/>
+    </marker>
+    <marker id="det-arrow-v" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#c45a11"/>
+    </marker>
+  </defs>
+  <style>
+    .det-title { font: 700 28px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111827; }
+    .det-subtitle { font: 500 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #4b5565; }
+    .det-card { fill: #ffffff; stroke: #d6dde8; stroke-width: 1.4; }
+    .det-panel-title { font: 700 20px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111827; }
+    .det-frame { fill: #ffffff; stroke: #d6dde8; stroke-width: 1.2; }
+    .det-grid { stroke: #dde3ec; stroke-width: 1; }
+    .det-axis { stroke: #8994a5; stroke-width: 1.7; }
+    .det-unit-square { fill: #6b7280; fill-opacity: 0.08; stroke: #6b7280; stroke-width: 1.8; stroke-dasharray: 5 5; }
+    .det-parallelogram { fill: #7c3aed; fill-opacity: 0.18; stroke: #7c3aed; stroke-width: 3; stroke-linejoin: round; }
+    .det-u { stroke: #0f9f8f; stroke-width: 4; stroke-linecap: round; }
+    .det-v { stroke: #c45a11; stroke-width: 4; stroke-linecap: round; }
+    .det-collapse { stroke: #7c3aed; stroke-width: 5; stroke-linecap: round; opacity: 0.85; }
+    .det-u-label { font: 700 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #0f9f8f; }
+    .det-v-label { font: 700 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #c45a11; }
+    .det-matrix { font: 650 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #111827; }
+    .det-summary { font: 700 18px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #111827; }
+    .det-note { font: 500 15px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #4b5565; }
+  </style>
+  <rect width="1200" height="760" fill="#f7f9fc"/>
+  <text x="600" y="42" class="det-title" text-anchor="middle">determinant = signed area scale</text>
+  <text x="600" y="72" class="det-subtitle" text-anchor="middle">The columns Ae1 and Ae2 are the sides of the transformed unit square.</text>
+  <g transform="translate(45.0 105.0)">
+<rect x="0" y="0" width="520" height="285" rx="8" class="det-card"/>
+<text x="22" y="34" class="det-panel-title">Columns span a parallelogram</text>
+</g>
+<g transform="translate(69.0 171.0)">
+<rect x="0" y="0" width="225.0" height="225.0" rx="5" class="det-frame"/>
+<line x1="28.12" y1="225.00" x2="28.12" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="196.88" x2="225.00" y2="196.88" class="det-grid"/>
+<line x1="56.25" y1="225.00" x2="56.25" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="168.75" x2="225.00" y2="168.75" class="det-grid"/>
+<line x1="84.38" y1="225.00" x2="84.38" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="140.62" x2="225.00" y2="140.62" class="det-grid"/>
+<line x1="140.62" y1="225.00" x2="140.62" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="84.38" x2="225.00" y2="84.38" class="det-grid"/>
+<line x1="168.75" y1="225.00" x2="168.75" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="56.25" x2="225.00" y2="56.25" class="det-grid"/>
+<line x1="196.88" y1="225.00" x2="196.88" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="28.12" x2="225.00" y2="28.12" class="det-grid"/>
+<line x1="0.00" y1="112.50" x2="225.00" y2="112.50" class="det-axis"/>
+<line x1="112.50" y1="225.00" x2="112.50" y2="0.00" class="det-axis"/>
+<polygon points="112.50,112.50 168.75,112.50 168.75,56.25 112.50,56.25" class="det-unit-square"/>
+<polygon points="112.50,112.50 180.00,95.62 202.50,33.75 135.00,50.62" class="det-parallelogram"/>
+<line x1="112.50" y1="112.50" x2="180.00" y2="95.62" class="det-u" marker-end="url(#det-arrow-u)"/>
+<line x1="112.50" y1="112.50" x2="135.00" y2="50.62" class="det-v" marker-end="url(#det-arrow-v)"/>
+<text x="188.00" y="87.62" class="det-u-label">Ae1</text>
+<text x="143.00" y="66.62" class="det-v-label">Ae2</text>
+</g>
+<text x="320.0" y="187.0" class="det-matrix">A = [[1.2, 0.4], [0.3, 1.1]]</text>
+<text x="320.0" y="221.0" class="det-summary">det A = 1.2</text>
+<text x="320.0" y="253.0" class="det-summary">area = |det A| = 1.2</text>
+<text x="320.0" y="291.0" class="det-note">The unit square maps to this parallelogram.</text>
+<text x="320.0" y="319.0" class="det-note">Signed area is ad - bc.</text><g transform="translate(635.0 105.0)">
+<rect x="0" y="0" width="520" height="285" rx="8" class="det-card"/>
+<text x="22" y="34" class="det-panel-title">det A = 1</text>
+</g>
+<g transform="translate(659.0 171.0)">
+<rect x="0" y="0" width="225.0" height="225.0" rx="5" class="det-frame"/>
+<line x1="28.12" y1="225.00" x2="28.12" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="196.88" x2="225.00" y2="196.88" class="det-grid"/>
+<line x1="56.25" y1="225.00" x2="56.25" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="168.75" x2="225.00" y2="168.75" class="det-grid"/>
+<line x1="84.38" y1="225.00" x2="84.38" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="140.62" x2="225.00" y2="140.62" class="det-grid"/>
+<line x1="140.62" y1="225.00" x2="140.62" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="84.38" x2="225.00" y2="84.38" class="det-grid"/>
+<line x1="168.75" y1="225.00" x2="168.75" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="56.25" x2="225.00" y2="56.25" class="det-grid"/>
+<line x1="196.88" y1="225.00" x2="196.88" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="28.12" x2="225.00" y2="28.12" class="det-grid"/>
+<line x1="0.00" y1="112.50" x2="225.00" y2="112.50" class="det-axis"/>
+<line x1="112.50" y1="225.00" x2="112.50" y2="0.00" class="det-axis"/>
+<polygon points="112.50,112.50 168.75,112.50 168.75,56.25 112.50,56.25" class="det-unit-square"/>
+<polygon points="112.50,112.50 168.75,112.50 213.75,56.25 157.50,56.25" class="det-parallelogram"/>
+<line x1="112.50" y1="112.50" x2="168.75" y2="112.50" class="det-u" marker-end="url(#det-arrow-u)"/>
+<line x1="112.50" y1="112.50" x2="157.50" y2="56.25" class="det-v" marker-end="url(#det-arrow-v)"/>
+<text x="176.75" y="104.50" class="det-u-label">Ae1</text>
+<text x="165.50" y="72.25" class="det-v-label">Ae2</text>
+</g>
+<text x="910.0" y="187.0" class="det-matrix">A = [[1, 0.8], [0, 1]]</text>
+<text x="910.0" y="221.0" class="det-summary">det A = 1.0</text>
+<text x="910.0" y="253.0" class="det-summary">area = |det A| = 1.0</text>
+<text x="910.0" y="291.0" class="det-note">Area and orientation are preserved.</text>
+<text x="910.0" y="319.0" class="det-note">This shear is not a rotation.</text><g transform="translate(45.0 425.0)">
+<rect x="0" y="0" width="520" height="285" rx="8" class="det-card"/>
+<text x="22" y="34" class="det-panel-title">det A = 0</text>
+</g>
+<g transform="translate(69.0 491.0)">
+<rect x="0" y="0" width="225.0" height="225.0" rx="5" class="det-frame"/>
+<line x1="28.12" y1="225.00" x2="28.12" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="196.88" x2="225.00" y2="196.88" class="det-grid"/>
+<line x1="56.25" y1="225.00" x2="56.25" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="168.75" x2="225.00" y2="168.75" class="det-grid"/>
+<line x1="84.38" y1="225.00" x2="84.38" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="140.62" x2="225.00" y2="140.62" class="det-grid"/>
+<line x1="140.62" y1="225.00" x2="140.62" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="84.38" x2="225.00" y2="84.38" class="det-grid"/>
+<line x1="168.75" y1="225.00" x2="168.75" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="56.25" x2="225.00" y2="56.25" class="det-grid"/>
+<line x1="196.88" y1="225.00" x2="196.88" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="28.12" x2="225.00" y2="28.12" class="det-grid"/>
+<line x1="0.00" y1="112.50" x2="225.00" y2="112.50" class="det-axis"/>
+<line x1="112.50" y1="225.00" x2="112.50" y2="0.00" class="det-axis"/>
+<polygon points="112.50,112.50 168.75,112.50 168.75,56.25 112.50,56.25" class="det-unit-square"/>
+<polygon points="112.50,112.50 168.75,112.50 213.75,112.50 157.50,112.50" class="det-parallelogram"/>
+<line x1="112.50" y1="112.50" x2="168.75" y2="112.50" class="det-u" marker-end="url(#det-arrow-u)"/>
+<line x1="112.50" y1="112.50" x2="157.50" y2="112.50" class="det-v" marker-end="url(#det-arrow-v)"/>
+<text x="176.75" y="104.50" class="det-u-label">Ae1</text>
+<text x="165.50" y="128.50" class="det-v-label">Ae2</text>
+</g>
+<text x="320.0" y="507.0" class="det-matrix">A = [[1, 0.8], [0, 0]]</text>
+<text x="320.0" y="541.0" class="det-summary">det A = 0.0</text>
+<text x="320.0" y="573.0" class="det-summary">area = |det A| = 0.0</text>
+<text x="320.0" y="611.0" class="det-note">The square collapses to a line.</text>
+<text x="320.0" y="639.0" class="det-note">The map is not invertible.</text>
+<g transform="translate(69.0 491.0)"><line x1="112.50" y1="112.50" x2="213.75" y2="112.50" class="det-collapse"/></g><g transform="translate(635.0 425.0)">
+<rect x="0" y="0" width="520" height="285" rx="8" class="det-card"/>
+<text x="22" y="34" class="det-panel-title">det A &lt; 0</text>
+</g>
+<g transform="translate(659.0 491.0)">
+<rect x="0" y="0" width="225.0" height="225.0" rx="5" class="det-frame"/>
+<line x1="28.12" y1="225.00" x2="28.12" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="196.88" x2="225.00" y2="196.88" class="det-grid"/>
+<line x1="56.25" y1="225.00" x2="56.25" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="168.75" x2="225.00" y2="168.75" class="det-grid"/>
+<line x1="84.38" y1="225.00" x2="84.38" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="140.62" x2="225.00" y2="140.62" class="det-grid"/>
+<line x1="140.62" y1="225.00" x2="140.62" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="84.38" x2="225.00" y2="84.38" class="det-grid"/>
+<line x1="168.75" y1="225.00" x2="168.75" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="56.25" x2="225.00" y2="56.25" class="det-grid"/>
+<line x1="196.88" y1="225.00" x2="196.88" y2="0.00" class="det-grid"/>
+<line x1="0.00" y1="28.12" x2="225.00" y2="28.12" class="det-grid"/>
+<line x1="0.00" y1="112.50" x2="225.00" y2="112.50" class="det-axis"/>
+<line x1="112.50" y1="225.00" x2="112.50" y2="0.00" class="det-axis"/>
+<polygon points="112.50,112.50 168.75,112.50 168.75,56.25 112.50,56.25" class="det-unit-square"/>
+<polygon points="112.50,112.50 168.75,112.50 168.75,168.75 112.50,168.75" class="det-parallelogram"/>
+<line x1="112.50" y1="112.50" x2="168.75" y2="112.50" class="det-u" marker-end="url(#det-arrow-u)"/>
+<line x1="112.50" y1="112.50" x2="112.50" y2="168.75" class="det-v" marker-end="url(#det-arrow-v)"/>
+<text x="176.75" y="104.50" class="det-u-label">Ae1</text>
+<text x="120.50" y="184.75" class="det-v-label">Ae2</text>
+</g>
+<text x="910.0" y="507.0" class="det-matrix">A = [[1, 0], [0, -1]]</text>
+<text x="910.0" y="541.0" class="det-summary">det A = -1.0</text>
+<text x="910.0" y="573.0" class="det-summary">area = |det A| = 1.0</text>
+<text x="910.0" y="611.0" class="det-note">Signed area is negative.</text>
+<text x="910.0" y="639.0" class="det-note">Orientation is reversed.</text>
+</svg>

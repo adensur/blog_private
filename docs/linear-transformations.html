@@ -196,6 +196,7 @@ window.Quarto = {
   <li><a href="#linear-transformations-in-mathbbr2" id="toc-linear-transformations-in-mathbbr2" class="nav-link active" data-scroll-target="#linear-transformations-in-mathbbr2"><span class="header-section-number">1</span> Linear Transformations in <span class="math inline">\(\mathbb{R}^2\)</span></a>
   <ul class="collapse">
   <li><a href="#identity-matrix" id="toc-identity-matrix" class="nav-link" data-scroll-target="#identity-matrix"><span class="header-section-number">1.1</span> Identity Matrix</a></li>
+  <li><a href="#determinant" id="toc-determinant" class="nav-link" data-scroll-target="#determinant"><span class="header-section-number">1.2</span> Determinant</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -256,35 +257,80 @@ x\\y
 x\\y
 \end{pmatrix}.
 \]</span></p>
-<p>In coordinate form,</p>
-<p><span class="math display">\[
-x'=x,\qquad y'=y.
-\]</span></p>
-<p>The basis vectors are also unchanged:</p>
-<p><span class="math display">\[
-I_2e_1=e_1,
-\qquad
-I_2e_2=e_2.
-\]</span></p>
-<p>For example,</p>
-<p><span class="math display">\[
-I_2
-\begin{pmatrix}
-2\\-1
-\end{pmatrix}
-=
-\begin{pmatrix}
-2\\-1
-\end{pmatrix}.
-\]</span></p>
-<p>The determinant is</p>
-<p><span class="math display">\[
-\det(I_2)=1.
-\]</span></p>
-<p>So the identity transformation preserves lengths, angles, areas, orientation, and position. Nothing moves.</p>
 <p>Here is the picture:</p>
 <p><img src="figures/linear-transformations/identity-matrix.svg" class="img-fluid" style="width:100.0%" alt="Identity transformation leaves a grid and arrow-shaped region unchanged."></p>
-<p>The two panels are intentionally identical. Applying <span class="math inline">\(I_2\)</span> does not rotate, stretch, shear, reflect, or translate anything.</p>
+</section>
+<section id="determinant" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="determinant"><span class="header-section-number">1.2</span> Determinant</h2>
+<p>Let</p>
+<p><span class="math display">\[
+A=
+\begin{pmatrix}
+a &amp; b\\
+c &amp; d
+\end{pmatrix}.
+\]</span></p>
+<p>The first column is where the first basis vector goes, and the second column is where the second basis vector goes:</p>
+<p><span class="math display">\[
+Ae_1=
+\begin{pmatrix}
+a\\c
+\end{pmatrix},
+\qquad
+Ae_2=
+\begin{pmatrix}
+b\\d
+\end{pmatrix}.
+\]</span></p>
+<p>The unit square has corners <span class="math inline">\(0\)</span>, <span class="math inline">\(e_1\)</span>, <span class="math inline">\(e_2\)</span>, and <span class="math inline">\(e_1+e_2\)</span>. After applying <span class="math inline">\(A\)</span>, those corners become</p>
+<p><span class="math display">\[
+0,\qquad
+Ae_1,\qquad
+Ae_2,\qquad
+Ae_1+Ae_2.
+\]</span></p>
+<p>So the image of the unit square is the parallelogram spanned by the two column vectors of <span class="math inline">\(A\)</span>. The determinant</p>
+<p><span class="math display">\[
+\det A = ad-bc
+\]</span></p>
+<p>is the signed area of this parallelogram. The ordinary geometric area is</p>
+<p><span class="math display">\[
+\left|\det A\right|.
+\]</span></p>
+<p><img src="figures/linear-transformations/determinant.svg" class="img-fluid" style="width:100.0%" alt="The determinant is the signed area of the parallelogram spanned by the transformed basis vectors, with determinant one, zero, and negative examples."></p>
+<p>The sign tells us about orientation:</p>
+<ul>
+<li>If <span class="math inline">\(\det A&gt;0\)</span>, orientation is preserved.</li>
+<li>If <span class="math inline">\(\det A&lt;0\)</span>, orientation is reversed.</li>
+<li>If <span class="math inline">\(\det A=0\)</span>, the square collapses to a line or point. The area is zero, so the transformation cannot be inverted.</li>
+</ul>
+<p>When <span class="math inline">\(\det A=1\)</span>, the transformation preserves signed area. This is not the same thing as preserving lengths or angles. Rotations have determinant <span class="math inline">\(1\)</span>, but they are only a small subset of determinant-one transformations.</p>
+<p>For example, every shear of the form</p>
+<p><span class="math display">\[
+\begin{pmatrix}
+1 &amp; k\\
+0 &amp; 1
+\end{pmatrix}
+\]</span></p>
+<p>has determinant <span class="math inline">\(1\)</span>, and every reciprocal scaling</p>
+<p><span class="math display">\[
+\begin{pmatrix}
+s &amp; 0\\
+0 &amp; 1/s
+\end{pmatrix}
+\qquad (s\ne 0)
+\]</span></p>
+<p>also has determinant <span class="math inline">\(1\)</span>. These transformations can visibly stretch or shear a shape while keeping its area unchanged.</p>
+<p>The determinant-one linear transformations form the group</p>
+<p><span class="math display">\[
+SL(2,\mathbb{R})=\{A\in GL(2,\mathbb{R})\mid \det A=1\}.
+\]</span></p>
+<p>Rotations are the stricter special case where lengths and angles are also preserved:</p>
+<p><span class="math display">\[
+A^TA=I,
+\qquad
+\det A=1.
+\]</span></p>
 
 
 </section>
