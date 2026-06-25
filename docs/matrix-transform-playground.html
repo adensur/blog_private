@@ -250,54 +250,47 @@ ul.task-list li input[type="checkbox"] {
 
   .matrix-input-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(62px, 1fr));
-    gap: 8px;
-    flex: 0 1 420px;
+    grid-template-columns: auto 1fr 1fr auto;
+    grid-template-rows: 1fr 1fr;
+    gap: 5px 8px;
+    align-items: center;
+    flex: 0 1 270px;
+    padding: 4px 0;
   }
 
   .matrix-input-grid label {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 5px;
-    font-size: 0.9rem;
+    gap: 4px;
+    font-size: 0.75rem;
     color: #4b5565;
     font-weight: 650;
   }
 
   .matrix-input-grid input {
     width: 100%;
-    min-height: 34px;
+    min-height: 30px;
     border: 1px solid #b9c3d2;
     border-radius: 6px;
-    padding: 5px 7px;
+    padding: 4px 7px;
     font: inherit;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 620;
     background: #ffffff;
     color: #111827;
   }
 
-  .matrix-display {
-    display: none;
-    grid-template-columns: auto 1fr 1fr auto;
-    gap: 10px 16px;
-    align-items: center;
-    justify-items: center;
-    padding: 16px;
-    border: 1px solid #e3e7ef;
-    border-radius: 8px;
-    background: #f8fafc;
-    color: #111827;
-    font-size: 2rem;
-    font-weight: 720;
-  }
-
   .matrix-bracket {
     grid-row: span 2;
-    font-size: 4.7rem;
-    line-height: 0.82;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    font-size: 4.15rem;
+    line-height: 0.8;
     color: #64748b;
+    font-weight: 300;
+    transform: translateY(-2px);
   }
 
   .matrix-preset,
@@ -344,19 +337,24 @@ ul.task-list li input[type="checkbox"] {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    flex: 1 1 300px;
-    min-width: 280px;
+    flex: 0 1 300px;
+    min-width: 300px;
   }
 
   .matrix-stat {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 8px;
     border: 1px solid #e3e7ef;
     border-radius: 6px;
     padding: 7px 8px;
     font-size: 0.8rem;
     color: #4b5565;
+  }
+
+  .matrix-stat span {
+    white-space: nowrap;
   }
 
   .matrix-stat strong {
@@ -456,20 +454,13 @@ ul.task-list li input[type="checkbox"] {
   <div class="matrix-playground-shell">
     <section class="matrix-panel" aria-label="Matrix controls">
       <div class="matrix-controls-title">Matrix entries</div>
-      <div class="matrix-input-grid">
+      <div class="matrix-input-grid" aria-label="Matrix entries">
+        <span class="matrix-bracket">[</span>
         <label>a <input id="matrix-a" type="number" step="0.1" value="1" inputmode="decimal"></label>
         <label>b <input id="matrix-b" type="number" step="0.1" value="0.6" inputmode="decimal"></label>
+        <span class="matrix-bracket">]</span>
         <label>c <input id="matrix-c" type="number" step="0.1" value="-0.3" inputmode="decimal"></label>
         <label>d <input id="matrix-d" type="number" step="0.1" value="1" inputmode="decimal"></label>
-      </div>
-
-      <div class="matrix-display" aria-label="Current matrix">
-        <span class="matrix-bracket">[</span>
-        <span id="display-a">1</span>
-        <span id="display-b">0.6</span>
-        <span class="matrix-bracket">]</span>
-        <span id="display-c">-0.3</span>
-        <span id="display-d">1</span>
       </div>
 
       <select class="matrix-preset" id="matrix-preset" aria-label="Preset matrix">
@@ -488,9 +479,9 @@ ul.task-list li input[type="checkbox"] {
       </div>
 
       <div class="matrix-stats" aria-live="polite">
-        <div class="matrix-stat"><span>determinant</span><strong id="matrix-det">1.00</strong></div>
-        <div class="matrix-stat"><span>area scale</span><strong id="matrix-area">1.00</strong></div>
-        <div class="matrix-stat"><span>orientation</span><strong id="matrix-orientation">preserved</strong></div>
+        <div class="matrix-stat"><span>det</span><strong id="matrix-det">1.00</strong></div>
+        <div class="matrix-stat"><span>area</span><strong id="matrix-area">1.00</strong></div>
+        <div class="matrix-stat"><span>orient.</span><strong id="matrix-orientation">preserved</strong></div>
       </div>
     </section>
 
@@ -516,12 +507,6 @@ ul.task-list li input[type="checkbox"] {
     b: document.getElementById("matrix-b"),
     c: document.getElementById("matrix-c"),
     d: document.getElementById("matrix-d"),
-  };
-  const displays = {
-    a: document.getElementById("display-a"),
-    b: document.getElementById("display-b"),
-    c: document.getElementById("display-c"),
-    d: document.getElementById("display-d"),
   };
   const detEl = document.getElementById("matrix-det");
   const areaEl = document.getElementById("matrix-area");
@@ -549,10 +534,6 @@ ul.task-list li input[type="checkbox"] {
   function numberFrom(input, fallback) {
     const value = Number(input.value);
     return Number.isFinite(value) ? value : fallback;
-  }
-
-  function formatNumber(value) {
-    return Number(value.toFixed(3)).toString();
   }
 
   function currentMatrix() {
@@ -778,8 +759,6 @@ ul.task-list li input[type="checkbox"] {
     orientationEl.textContent =
       Math.abs(det) < 1e-9 ? "collapsed" : det > 0 ? "preserved" : "reversed";
 
-    [displays.a.textContent, displays.b.textContent, displays.c.textContent, displays.d.textContent] =
-      matrix.map(formatNumber);
   }
 
   function setMatrix(values) {
