@@ -7,7 +7,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT_DIR = ROOT / "figures" / "linear-algebra"
+LINEAR_ALGEBRA_OUT_DIR = ROOT / "figures" / "linear-algebra"
+LINEAR_TRANSFORMATIONS_OUT_DIR = ROOT / "figures" / "linear-transformations"
 
 Point = tuple[float, float]
 
@@ -174,11 +175,65 @@ def svg_document() -> str:
 """
 
 
+def identity_matrix_svg_document() -> str:
+    return """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img" aria-labelledby="identity-title identity-desc">
+  <title id="identity-title">The identity matrix leaves a shape unchanged</title>
+  <desc id="identity-desc">Two panels show the same grid and arrow-shaped region before and after applying the two-dimensional identity matrix.</desc>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4b5565"/>
+    </marker>
+    <g id="identity-grid">
+      <rect x="0" y="0" width="280" height="240" rx="8" fill="#ffffff" stroke="#d6dde8" stroke-width="1.5"/>
+      <g stroke="#d8dee8" stroke-width="1">
+        <line x1="56" y1="0" x2="56" y2="240"/>
+        <line x1="112" y1="0" x2="112" y2="240"/>
+        <line x1="168" y1="0" x2="168" y2="240"/>
+        <line x1="224" y1="0" x2="224" y2="240"/>
+        <line x1="0" y1="48" x2="280" y2="48"/>
+        <line x1="0" y1="96" x2="280" y2="96"/>
+        <line x1="0" y1="144" x2="280" y2="144"/>
+        <line x1="0" y1="192" x2="280" y2="192"/>
+      </g>
+      <g stroke="#9aa4b2" stroke-width="2">
+        <line x1="140" y1="0" x2="140" y2="240"/>
+        <line x1="0" y1="120" x2="280" y2="120"/>
+      </g>
+    </g>
+    <polygon id="identity-arrow" points="30,98 156,98 156,70 245,120 156,170 156,142 30,142"/>
+  </defs>
+
+  <rect width="960" height="360" rx="8" fill="#f7f9fc" stroke="#d6dde8"/>
+
+  <g transform="translate(80 70)">
+    <text x="0" y="-22" fill="#111827" font-size="22" font-weight="700" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Before</text>
+    <use href="#identity-grid"/>
+    <use href="#identity-arrow" fill="rgba(107,114,128,0.14)" stroke="#6b7280" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <g transform="translate(600 70)">
+    <text x="0" y="-22" fill="#111827" font-size="22" font-weight="700" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">After applying I<tspan baseline-shift="sub" font-size="14">2</tspan></text>
+    <use href="#identity-grid"/>
+    <use href="#identity-arrow" fill="rgba(124,58,237,0.18)" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <text x="480" y="190" text-anchor="middle" fill="#4b5565" font-size="26" font-weight="700" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">same</text>
+  <path d="M380 180 H565" fill="none" stroke="#4b5565" stroke-width="2.5" marker-end="url(#arrowhead)"/>
+</svg>
+"""
+
+
 def main() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    svg_path = OUT_DIR / "transformations-shape.svg"
-    png_path = OUT_DIR / "transformations-shape.png"
+    LINEAR_ALGEBRA_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    LINEAR_TRANSFORMATIONS_OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    svg_path = LINEAR_ALGEBRA_OUT_DIR / "transformations-shape.svg"
+    png_path = LINEAR_ALGEBRA_OUT_DIR / "transformations-shape.png"
     svg_path.write_text(svg_document(), encoding="utf-8")
+    (LINEAR_TRANSFORMATIONS_OUT_DIR / "identity-matrix.svg").write_text(
+        identity_matrix_svg_document(),
+        encoding="utf-8",
+    )
 
     converter = shutil.which("rsvg-convert")
     if converter:
