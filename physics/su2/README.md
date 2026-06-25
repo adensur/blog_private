@@ -36,4 +36,6 @@ On this machine, Quarto was also installed without `sudo` at:
 
 ## GitHub Pages
 
-This project renders to the repository-root `docs/` directory. In GitHub, configure Pages to publish from the `main` branch and `/docs` folder.
+Live site: https://adensur.github.io/blog_private/
+
+This project renders to the repository-root `docs/` directory. In GitHub, Pages is configured to publish from the `main` branch and `/docs` folder.
