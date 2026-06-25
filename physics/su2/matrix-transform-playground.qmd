@@ -345,13 +345,13 @@ number-sections: false
   const gridExtent = 2;
   const defaultMatrix = [1, 0.6, -0.3, 1];
   const arrowShape = [
-    [-3.2, -0.95],
-    [0.45, -0.95],
-    [0.45, -1.75],
-    [2.95, 0],
-    [0.45, 1.75],
-    [0.45, 0.95],
-    [-3.2, 0.95],
+    [-1.6, -0.475],
+    [0.225, -0.475],
+    [0.225, -0.875],
+    [1.475, 0],
+    [0.225, 0.875],
+    [0.225, 0.475],
+    [-1.6, 0.475],
   ];
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
@@ -387,18 +387,19 @@ number-sections: false
       points.push(transform([-gridExtent, i]));
       points.push(transform([gridExtent, i]));
     }
-    points.push([-gridExtent, -gridExtent], [gridExtent, gridExtent]);
     points.push(transform([1, 0]), transform([0, 1]));
     points.push(...arrowShape.map(transform));
     return points;
   }
 
-  function viewport(panel, transform) {
-    const points = linePoints(transform);
+  function sharedScale(panel, transforms) {
+    const points = transforms.flatMap((transform) => linePoints(transform));
     const maxX = Math.max(1, ...points.map(([x]) => Math.abs(x)));
     const maxY = Math.max(1, ...points.map(([, y]) => Math.abs(y)));
-    const scale = Math.min((panel.width - 2 * margin) / (2 * maxX), (panel.height - 2 * margin) / (2 * maxY));
+    return Math.min((panel.width - 2 * margin) / (2 * maxX), (panel.height - 2 * margin) / (2 * maxY));
+  }
 
+  function viewport(panel, scale) {
     return {
       project([x, y]) {
         return [
@@ -500,9 +501,8 @@ number-sections: false
     }
   }
 
-  function drawShapePanel(group, panel, title, transform, options) {
+  function drawShapePanel(group, panel, title, transform, view, options) {
     drawPanelFrame(group, panel, title);
-    const view = viewport(panel, transform);
     drawGrid(group, view, transform, options.verticalColor, options.horizontalColor, options.gridOpacity);
 
     addPolygon(group, view, arrowShape.map(transform), {
@@ -545,6 +545,9 @@ number-sections: false
     const leftPanel = { x: 16, y: 16, width: 764, height: 908 };
     const rightPanel = { x: 820, y: 16, width: 764, height: 908 };
     const matrixTransform = (point) => applyMatrix(matrix, point);
+    const scale = sharedScale(leftPanel, [identity, matrixTransform]);
+    const originalView = viewport(leftPanel, scale);
+    const transformedView = viewport(rightPanel, scale);
 
     svg.innerHTML = `
       <defs>
@@ -558,7 +561,7 @@ number-sections: false
     const transformedPanel = svgEl("g");
     svg.append(originalPanel, transformedPanel);
 
-    drawShapePanel(originalPanel, leftPanel, "Original", identity, {
+    drawShapePanel(originalPanel, leftPanel, "Original", identity, originalView, {
       verticalColor: { strong: "#9aa4b2", light: "#cfd6e3" },
       horizontalColor: { strong: "#9aa4b2", light: "#cfd6e3" },
       gridOpacity: 0.92,
@@ -568,7 +571,7 @@ number-sections: false
       e2Label: "e2",
     });
 
-    drawShapePanel(transformedPanel, rightPanel, "Transformed by A", matrixTransform, {
+    drawShapePanel(transformedPanel, rightPanel, "Transformed by A", matrixTransform, transformedView, {
       verticalColor: { strong: "#184fa3", light: "#2f6fdd" },
       horizontalColor: { strong: "#b45309", light: "#e07a2f" },
       gridOpacity: 0.88,
