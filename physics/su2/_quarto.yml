@@ -12,11 +12,14 @@ website:
         text: Home
       - href: linear-algebra.qmd
         text: Linear Algebra
+      - href: linear-transformations.qmd
+        text: Linear Transformations
   sidebar:
     style: docked
     contents:
       - index.qmd
       - linear-algebra.qmd
+      - linear-transformations.qmd
 
 format:
   html:

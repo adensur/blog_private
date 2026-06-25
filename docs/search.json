@@ -1,13 +1,13 @@
 [
   {
-    "objectID": "linear-algebra.html",
-    "href": "linear-algebra.html",
-    "title": "Linear Algebra",
+    "objectID": "linear-transformations.html",
+    "href": "linear-transformations.html",
+    "title": "Linear Transformations",
     "section": "",
-    "text": "1 Transformations of Vector Spaces and Linear Transformations\nLet’s say we have a vector space \\(\\mathbb{R}^2\\). Let’s write each element as\n\\[\nv=\\begin{pmatrix} x \\\\ y \\end{pmatrix}.\n\\]\nIt can be thought of as a vector, or as a point on a 2D plane.\nA transformation of this space maps every element of this space into another element. In the most general form, we can write it as\n\\[\nT: \\mathbb{R}^2 \\to \\mathbb{R}^2,\\qquad\nv=\\begin{pmatrix} x \\\\ y \\end{pmatrix}\n\\mapsto\nT(v)=\\begin{pmatrix} f_1(x, y) \\\\ f_2(x,y) \\end{pmatrix}.\n\\]\nAt first glance, one might write each component as a familiar “linear-looking” function\n\\[\nf(x,y)=c+ax+by.\n\\]\nThe constant term \\(c\\) is a translation shift. In coordinate geometry this is often called a linear function, but in linear algebra the presence of \\(c\\) makes the transformation affine, not linear. A genuinely linear transformation must send the zero vector to the zero vector, so the constant term has to vanish:\n\\[\nf(x,y)=ax+by.\n\\]\nFor a linear transformation, both component functions \\(f_1\\) and \\(f_2\\) have this form. Equivalently, the transformation can be represented by a matrix:\n\\[\nT(v)=Av,\\qquad\nA=\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}.\n\\]\nThis is the visual difference: a linear map can rotate, scale, shear, and reflect, but it sends straight grid lines to straight grid lines. A non-linear map can bend the grid itself.\n\n\n\n\n\n\nFigure 1: The same set under linear and non-linear transformations\n\n\n\nThe middle panel in Figure 1 uses\n\\[\nA=\\begin{pmatrix}1.15 & 0.55 \\\\ -0.25 & 0.9\\end{pmatrix}.\n\\]\nThe right panel uses the non-linear transformation\n\\[\n\\theta(x,y)=0.75(x^2+y^2)+0.25x,\n\\]\n\\[\nT_{\\text{nonlinear}}(x,y)=\n\\begin{pmatrix}\nx\\cos\\theta(x,y)-y\\sin\\theta(x,y) \\\\\nx\\sin\\theta(x,y)+y\\cos\\theta(x,y)+0.18\\sin(\\pi x)\n\\end{pmatrix}.\n\\]\nSince the rotation angle depends on the point \\((x,y)\\), different parts of the shape rotate by different amounts. That is why straight grid lines become curved.",
+    "text": "1 Linear Transformations in \\(\\mathbb{R}^2\\)\nA linear transformation \\(T:\\mathbb{R}^2\\to\\mathbb{R}^2\\) can be represented by a matrix\n\\[\nA=\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}.\n\\]\nUsing column vectors, the transformation is\n\\[\nT\\begin{pmatrix}x\\\\y\\end{pmatrix}\n=\nA\\begin{pmatrix}x\\\\y\\end{pmatrix}\n=\n\\begin{pmatrix}\nax+by \\\\\ncx+dy\n\\end{pmatrix}.\n\\]\nThe first column of \\(A\\) is where the basis vector \\(e_1=\\begin{pmatrix}1\\\\0\\end{pmatrix}\\) goes. The second column is where \\(e_2=\\begin{pmatrix}0\\\\1\\end{pmatrix}\\) goes:\n\\[\nA e_1=\\begin{pmatrix}a\\\\c\\end{pmatrix},\n\\qquad\nA e_2=\\begin{pmatrix}b\\\\d\\end{pmatrix}.\n\\]\nTry changing the entries of \\(A\\) below. The grey grid is the original coordinate grid; the blue/orange grid is its image under \\(A\\).\n\n\n\n  \n    \n      Matrix entries\n      \n        a\n        b\n        c\n        d\n      \n\n      \n        Identity\n        Shear\n        Rotate 90\n        Reflect\n        Project\n        Mixed\n      \n\n      Reset\n\n      \n        determinant1.00\n        area scale1.00\n        orientationpreserved\n      \n    \n\n    \n      \n        original grid\n        image of vertical lines\n        image of horizontal lines\n        basis vectors\n      \n      \n    \n  \n\n\n\nThe determinant is a compact summary of what the map does to area and orientation:\n\\[\n\\det A = ad-bc.\n\\]\nIf \\(\\det A&gt;0\\), orientation is preserved. If \\(\\det A&lt;0\\), orientation is reversed. If \\(\\det A=0\\), the plane collapses onto a line or point, so the transformation is not invertible.",
     "crumbs": [
       "Home",
-      "Linear Algebra"
+      "Linear Transformations"
     ]
   },
   {
@@ -26,10 +26,21 @@
     "href": "index.html#notes",
     "title": "Physics Journal",
     "section": "1 Notes",
-    "text": "1 Notes\n\nLinear Algebra",
+    "text": "1 Notes\n\nLinear Algebra\nLinear Transformations",
     "crumbs": [
       "Home",
       "Physics Journal"
+    ]
+  },
+  {
+    "objectID": "linear-algebra.html",
+    "href": "linear-algebra.html",
+    "title": "Linear Algebra",
+    "section": "",
+    "text": "1 Transformations of Vector Spaces and Linear Transformations\nLet’s say we have a vector space \\(\\mathbb{R}^2\\). Let’s write each element as\n\\[\nv=\\begin{pmatrix} x \\\\ y \\end{pmatrix}.\n\\]\nIt can be thought of as a vector, or as a point on a 2D plane.\nA transformation of this space maps every element of this space into another element. In the most general form, we can write it as\n\\[\nT: \\mathbb{R}^2 \\to \\mathbb{R}^2,\\qquad\nv=\\begin{pmatrix} x \\\\ y \\end{pmatrix}\n\\mapsto\nT(v)=\\begin{pmatrix} f_1(x, y) \\\\ f_2(x,y) \\end{pmatrix}.\n\\]\nAt first glance, one might write each component as a familiar “linear-looking” function\n\\[\nf(x,y)=c+ax+by.\n\\]\nThe constant term \\(c\\) is a translation shift. In coordinate geometry this is often called a linear function, but in linear algebra the presence of \\(c\\) makes the transformation affine, not linear. A genuinely linear transformation must send the zero vector to the zero vector, so the constant term has to vanish:\n\\[\nf(x,y)=ax+by.\n\\]\nFor a linear transformation, both component functions \\(f_1\\) and \\(f_2\\) have this form. Equivalently, the transformation can be represented by a matrix:\n\\[\nT(v)=Av,\\qquad\nA=\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}.\n\\]\nThis is the visual difference: a linear map can rotate, scale, shear, and reflect, but it sends straight grid lines to straight grid lines. A non-linear map can bend the grid itself.\n\n\n\n\n\n\nFigure 1: The same set under linear and non-linear transformations\n\n\n\nThe middle panel in Figure 1 uses\n\\[\nA=\\begin{pmatrix}1.15 & 0.55 \\\\ -0.25 & 0.9\\end{pmatrix}.\n\\]\nThe right panel uses the non-linear transformation\n\\[\n\\theta(x,y)=0.75(x^2+y^2)+0.25x,\n\\]\n\\[\nT_{\\text{nonlinear}}(x,y)=\n\\begin{pmatrix}\nx\\cos\\theta(x,y)-y\\sin\\theta(x,y) \\\\\nx\\sin\\theta(x,y)+y\\cos\\theta(x,y)+0.18\\sin(\\pi x)\n\\end{pmatrix}.\n\\]\nSince the rotation angle depends on the point \\((x,y)\\), different parts of the shape rotate by different amounts. That is why straight grid lines become curved.",
+    "crumbs": [
+      "Home",
+      "Linear Algebra"
     ]
   }
 ]

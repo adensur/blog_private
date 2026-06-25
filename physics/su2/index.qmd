@@ -7,3 +7,4 @@ This is a working journal for notes on mathematics, physics, symmetry, and Lie t
 ## Notes
 
 - [Linear Algebra](linear-algebra.qmd)
+- [Linear Transformations](linear-transformations.qmd)

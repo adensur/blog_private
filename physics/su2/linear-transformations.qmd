@@ -1,0 +1,443 @@
+---
+title: "Linear Transformations"
+---
+
+# Linear Transformations in $\mathbb{R}^2$
+
+A linear transformation $T:\mathbb{R}^2\to\mathbb{R}^2$ can be represented by a matrix
+
+$$
+A=\begin{pmatrix} a & b \\ c & d \end{pmatrix}.
+$$
+
+Using column vectors, the transformation is
+
+$$
+T\begin{pmatrix}x\\y\end{pmatrix}
+=
+A\begin{pmatrix}x\\y\end{pmatrix}
+=
+\begin{pmatrix}
+ax+by \\
+cx+dy
+\end{pmatrix}.
+$$
+
+The first column of $A$ is where the basis vector $e_1=\begin{pmatrix}1\\0\end{pmatrix}$ goes. The second column is where $e_2=\begin{pmatrix}0\\1\end{pmatrix}$ goes:
+
+$$
+A e_1=\begin{pmatrix}a\\c\end{pmatrix},
+\qquad
+A e_2=\begin{pmatrix}b\\d\end{pmatrix}.
+$$
+
+Try changing the entries of $A$ below. The grey grid is the original coordinate grid; the blue/orange grid is its image under $A$.
+
+```{=html}
+<style>
+  .matrix-widget {
+    border: 1px solid #d8dde7;
+    border-radius: 8px;
+    background: #ffffff;
+    margin: 1.25rem 0 1.75rem;
+    overflow: hidden;
+  }
+
+  .matrix-widget-inner {
+    display: grid;
+    grid-template-columns: minmax(230px, 310px) minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .matrix-controls {
+    border-right: 1px solid #e3e7ef;
+    padding: 18px;
+    background: #f7f9fc;
+  }
+
+  .matrix-controls-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 12px;
+  }
+
+  .matrix-input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .matrix-input-grid label {
+    display: grid;
+    gap: 4px;
+    font-size: 0.82rem;
+    color: #4b5565;
+  }
+
+  .matrix-input-grid input {
+    width: 100%;
+    border: 1px solid #c8d0dc;
+    border-radius: 6px;
+    padding: 7px 8px;
+    font: inherit;
+    background: #ffffff;
+  }
+
+  .matrix-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .matrix-presets button,
+  .matrix-reset {
+    border: 1px solid #c8d0dc;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1f2937;
+    padding: 6px 9px;
+    font: inherit;
+    font-size: 0.84rem;
+    cursor: pointer;
+  }
+
+  .matrix-presets button:hover,
+  .matrix-reset:hover {
+    background: #edf2f7;
+  }
+
+  .matrix-stats {
+    display: grid;
+    gap: 8px;
+    font-size: 0.9rem;
+  }
+
+  .matrix-stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid #e3e7ef;
+    padding-top: 8px;
+  }
+
+  .matrix-stat strong {
+    color: #111827;
+    font-weight: 650;
+  }
+
+  .matrix-canvas-wrap {
+    padding: 14px;
+    min-width: 0;
+  }
+
+  .matrix-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1.25;
+    background: #ffffff;
+  }
+
+  .matrix-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    color: #4b5565;
+    font-size: 0.86rem;
+    padding: 0 2px 8px;
+  }
+
+  .matrix-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-line {
+    width: 24px;
+    height: 3px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  @media (max-width: 760px) {
+    .matrix-widget-inner {
+      grid-template-columns: 1fr;
+    }
+
+    .matrix-controls {
+      border-right: 0;
+      border-bottom: 1px solid #e3e7ef;
+    }
+  }
+</style>
+
+<div class="matrix-widget" id="matrix-transform-widget">
+  <div class="matrix-widget-inner">
+    <section class="matrix-controls" aria-label="Matrix controls">
+      <div class="matrix-controls-title">Matrix entries</div>
+      <div class="matrix-input-grid">
+        <label>a<input id="matrix-a" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>b<input id="matrix-b" type="number" step="0.1" value="0.6" inputmode="decimal"></label>
+        <label>c<input id="matrix-c" type="number" step="0.1" value="-0.3" inputmode="decimal"></label>
+        <label>d<input id="matrix-d" type="number" step="0.1" value="1" inputmode="decimal"></label>
+      </div>
+
+      <div class="matrix-presets" aria-label="Preset matrices">
+        <button type="button" data-matrix="1,0,0,1">Identity</button>
+        <button type="button" data-matrix="1,0.8,0,1">Shear</button>
+        <button type="button" data-matrix="0,-1,1,0">Rotate 90</button>
+        <button type="button" data-matrix="1,0,0,-1">Reflect</button>
+        <button type="button" data-matrix="1,0,0,0">Project</button>
+        <button type="button" data-matrix="1.2,0.7,-0.4,0.9">Mixed</button>
+      </div>
+
+      <button type="button" class="matrix-reset" id="matrix-reset">Reset</button>
+
+      <div class="matrix-stats" aria-live="polite">
+        <div class="matrix-stat"><span>determinant</span><strong id="matrix-det">1.00</strong></div>
+        <div class="matrix-stat"><span>area scale</span><strong id="matrix-area">1.00</strong></div>
+        <div class="matrix-stat"><span>orientation</span><strong id="matrix-orientation">preserved</strong></div>
+      </div>
+    </section>
+
+    <section class="matrix-canvas-wrap" aria-label="Transformed grid visualization">
+      <div class="matrix-legend">
+        <span><i class="legend-line" style="background:#cfd6e3"></i>original grid</span>
+        <span><i class="legend-line" style="background:#2f6fdd"></i>image of vertical lines</span>
+        <span><i class="legend-line" style="background:#e07a2f"></i>image of horizontal lines</span>
+        <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
+      </div>
+      <svg class="matrix-canvas" id="matrix-svg" viewBox="0 0 760 610" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  const svg = document.getElementById("matrix-svg");
+  const inputs = {
+    a: document.getElementById("matrix-a"),
+    b: document.getElementById("matrix-b"),
+    c: document.getElementById("matrix-c"),
+    d: document.getElementById("matrix-d"),
+  };
+  const detEl = document.getElementById("matrix-det");
+  const areaEl = document.getElementById("matrix-area");
+  const orientationEl = document.getElementById("matrix-orientation");
+  const resetButton = document.getElementById("matrix-reset");
+  const presets = document.querySelectorAll("#matrix-transform-widget [data-matrix]");
+
+  const width = 760;
+  const height = 610;
+  const margin = 46;
+  const gridExtent = 4;
+  const defaultMatrix = [1, 0.6, -0.3, 1];
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  function numberFrom(input, fallback) {
+    const value = Number(input.value);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function currentMatrix() {
+    return [
+      numberFrom(inputs.a, 0),
+      numberFrom(inputs.b, 0),
+      numberFrom(inputs.c, 0),
+      numberFrom(inputs.d, 0),
+    ];
+  }
+
+  function applyMatrix(matrix, point) {
+    const [a, b, c, d] = matrix;
+    const [x, y] = point;
+    return [a * x + b * y, c * x + d * y];
+  }
+
+  function linePoints(matrix) {
+    const points = [];
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      points.push(applyMatrix(matrix, [i, -gridExtent]));
+      points.push(applyMatrix(matrix, [i, gridExtent]));
+      points.push(applyMatrix(matrix, [-gridExtent, i]));
+      points.push(applyMatrix(matrix, [gridExtent, i]));
+    }
+    points.push([-gridExtent, -gridExtent], [gridExtent, gridExtent]);
+    points.push(applyMatrix(matrix, [1, 0]), applyMatrix(matrix, [0, 1]));
+    return points;
+  }
+
+  function viewport(matrix) {
+    const points = linePoints(matrix);
+    const maxAbs = Math.max(
+      1,
+      ...points.map(([x, y]) => Math.max(Math.abs(x), Math.abs(y)))
+    );
+    const world = Math.ceil(maxAbs * 1.15);
+    const scale = Math.min((width - 2 * margin) / (2 * world), (height - 2 * margin) / (2 * world));
+
+    return {
+      world,
+      scale,
+      project([x, y]) {
+        return [
+          width / 2 + x * scale,
+          height / 2 - y * scale,
+        ];
+      },
+    };
+  }
+
+  function svgEl(name, attrs = {}) {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const [key, value] of Object.entries(attrs)) {
+      node.setAttribute(key, value);
+    }
+    return node;
+  }
+
+  function addLine(group, view, p1, p2, attrs) {
+    const [x1, y1] = view.project(p1);
+    const [x2, y2] = view.project(p2);
+    group.appendChild(svgEl("line", { x1, y1, x2, y2, ...attrs }));
+  }
+
+  function addPolyline(group, view, points, attrs) {
+    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
+    group.appendChild(svgEl("polyline", { points: projected, ...attrs }));
+  }
+
+  function addArrow(group, view, start, end, color, label) {
+    addLine(group, view, start, end, {
+      stroke: color,
+      "stroke-width": 4,
+      "stroke-linecap": "round",
+      "marker-end": `url(#arrow-${color.slice(1)})`,
+    });
+
+    const [x, y] = view.project(end);
+    const text = svgEl("text", {
+      x: x + 8,
+      y: y - 8,
+      fill: color,
+      "font-size": 16,
+      "font-weight": 700,
+    });
+    text.textContent = label;
+    group.appendChild(text);
+  }
+
+  function marker(color) {
+    return `
+      <marker id="arrow-${color.slice(1)}" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L0,6 L8,3 z" fill="${color}" />
+      </marker>
+    `;
+  }
+
+  function render() {
+    const matrix = currentMatrix();
+    const [a, b, c, d] = matrix;
+    const det = a * d - b * c;
+    const view = viewport(matrix);
+
+    svg.innerHTML = `
+      <defs>
+        ${marker("#159a8a")}
+        ${marker("#b45309")}
+      </defs>
+      <rect width="${width}" height="${height}" fill="#ffffff"></rect>
+    `;
+
+    const original = svgEl("g");
+    const transformed = svgEl("g");
+    const foreground = svgEl("g");
+    svg.append(original, transformed, foreground);
+
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      const strong = i === 0;
+      addLine(original, view, [i, -gridExtent], [i, gridExtent], {
+        stroke: strong ? "#9aa4b2" : "#cfd6e3",
+        "stroke-width": strong ? 1.8 : 1,
+      });
+      addLine(original, view, [-gridExtent, i], [gridExtent, i], {
+        stroke: strong ? "#9aa4b2" : "#cfd6e3",
+        "stroke-width": strong ? 1.8 : 1,
+      });
+    }
+
+    for (let i = -gridExtent; i <= gridExtent; i += 1) {
+      const verticalStart = applyMatrix(matrix, [i, -gridExtent]);
+      const verticalEnd = applyMatrix(matrix, [i, gridExtent]);
+      const horizontalStart = applyMatrix(matrix, [-gridExtent, i]);
+      const horizontalEnd = applyMatrix(matrix, [gridExtent, i]);
+      addLine(transformed, view, verticalStart, verticalEnd, {
+        stroke: i === 0 ? "#184fa3" : "#2f6fdd",
+        "stroke-width": i === 0 ? 2.4 : 1.5,
+        opacity: 0.86,
+      });
+      addLine(transformed, view, horizontalStart, horizontalEnd, {
+        stroke: i === 0 ? "#b45309" : "#e07a2f",
+        "stroke-width": i === 0 ? 2.4 : 1.5,
+        opacity: 0.86,
+      });
+    }
+
+    const square = [
+      applyMatrix(matrix, [0, 0]),
+      applyMatrix(matrix, [1, 0]),
+      applyMatrix(matrix, [1, 1]),
+      applyMatrix(matrix, [0, 1]),
+      applyMatrix(matrix, [0, 0]),
+    ];
+    addPolyline(foreground, view, square, {
+      fill: "rgba(21, 154, 138, 0.14)",
+      stroke: "#159a8a",
+      "stroke-width": 3,
+      "stroke-linejoin": "round",
+    });
+
+    addArrow(foreground, view, [0, 0], applyMatrix(matrix, [1, 0]), "#159a8a", "Ae1");
+    addArrow(foreground, view, [0, 0], applyMatrix(matrix, [0, 1]), "#b45309", "Ae2");
+
+    const origin = view.project([0, 0]);
+    foreground.appendChild(svgEl("circle", {
+      cx: origin[0],
+      cy: origin[1],
+      r: 4,
+      fill: "#111827",
+    }));
+
+    detEl.textContent = det.toFixed(3);
+    areaEl.textContent = Math.abs(det).toFixed(3);
+    orientationEl.textContent =
+      Math.abs(det) < 1e-9 ? "collapsed" : det > 0 ? "preserved" : "reversed";
+  }
+
+  function setMatrix(values) {
+    [inputs.a.value, inputs.b.value, inputs.c.value, inputs.d.value] = values;
+    render();
+  }
+
+  Object.values(inputs).forEach((input) => input.addEventListener("input", render));
+  presets.forEach((button) => {
+    button.addEventListener("click", () => setMatrix(button.dataset.matrix.split(",").map(Number)));
+  });
+  resetButton.addEventListener("click", () => setMatrix(defaultMatrix));
+
+  render();
+})();
+</script>
+```
+
+The determinant is a compact summary of what the map does to area and orientation:
+
+$$
+\det A = ad-bc.
+$$
+
+If $\det A>0$, orientation is preserved. If $\det A<0$, orientation is reversed. If $\det A=0$, the plane collapses onto a line or point, so the transformation is not invertible.
