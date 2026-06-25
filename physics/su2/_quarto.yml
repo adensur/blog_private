@@ -1,0 +1,30 @@
+project:
+  type: website
+  output-dir: ../../docs
+  render:
+    - "*.qmd"
+
+website:
+  title: "Physics Journal"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: linear-algebra.qmd
+        text: Linear Algebra
+  sidebar:
+    style: docked
+    contents:
+      - index.qmd
+      - linear-algebra.qmd
+
+format:
+  html:
+    toc: true
+    number-sections: true
+    html-math-method: mathjax
+    code-fold: true
+    fig-responsive: true
+
+execute:
+  freeze: auto

@@ -1,0 +1,9 @@
+---
+title: "Physics Journal"
+---
+
+This is a working journal for notes on mathematics, physics, symmetry, and Lie theory.
+
+## Notes
+
+- [Linear Algebra](linear-algebra.qmd)
