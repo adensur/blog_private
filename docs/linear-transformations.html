@@ -230,7 +230,7 @@ window.Quarto = {
 <h2 data-number="1.1" class="anchored" data-anchor-id="identity-matrix"><span class="header-section-number">1.1</span> Identity Matrix</h2>
 <p>The first useful special case is the identity matrix:</p>
 <p><span class="math display">\[
-I_2=
+I=
 \begin{pmatrix}
 1 &amp; 0 \\
 0 &amp; 1
@@ -238,7 +238,7 @@ I_2=
 \]</span></p>
 <p>It is called the identity matrix because it leaves every vector exactly as it was. For an arbitrary vector <span class="math inline">\(v=\begin{pmatrix}x\\y\end{pmatrix}\)</span>,</p>
 <p><span class="math display">\[
-I_2v
+Iv
 =
 \begin{pmatrix}
 1 &amp; 0 \\
@@ -262,7 +262,7 @@ x\\y
 </section>
 <section id="determinant" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="determinant"><span class="header-section-number">1.2</span> Determinant</h2>
-<p>Let</p>
+<p>For a matrix</p>
 <p><span class="math display">\[
 A=
 \begin{pmatrix}
@@ -270,7 +270,7 @@ a &amp; b\\
 c &amp; d
 \end{pmatrix}.
 \]</span></p>
-<p>The first column is where the first basis vector goes, and the second column is where the second basis vector goes:</p>
+<p>the columns tell us where the basis vectors go:</p>
 <p><span class="math display">\[
 Ae_1=
 \begin{pmatrix}
@@ -282,37 +282,137 @@ Ae_2=
 b\\d
 \end{pmatrix}.
 \]</span></p>
-<p>The unit square has corners <span class="math inline">\(0\)</span>, <span class="math inline">\(e_1\)</span>, <span class="math inline">\(e_2\)</span>, and <span class="math inline">\(e_1+e_2\)</span>. After applying <span class="math inline">\(A\)</span>, those corners become</p>
-<p><span class="math display">\[
-0,\qquad
-Ae_1,\qquad
-Ae_2,\qquad
-Ae_1+Ae_2.
-\]</span></p>
-<p>So the image of the unit square is the parallelogram spanned by the two column vectors of <span class="math inline">\(A\)</span>. The determinant</p>
+<p>So the unit square spanned by <span class="math inline">\(e_1\)</span> and <span class="math inline">\(e_2\)</span> becomes the parallelogram spanned by <span class="math inline">\(Ae_1\)</span> and <span class="math inline">\(Ae_2\)</span>.</p>
+<div id="determinant-visualization" style="margin: 1rem 0 1.5rem;"></div>
+<script>
+(() => {
+  const host = document.currentScript.previousElementSibling;
+  const ns = "http://www.w3.org/2000/svg";
+  let svg;
+  svg = el("svg", {
+    viewBox: "0 0 980 380",
+    role: "img",
+    "aria-label": "The unit square transforms into a parallelogram whose signed area is the determinant.",
+    style: "display:block;width:100%;height:auto;border:1px solid #d6dde8;border-radius:8px;background:#f7f9fc;"
+  }, null);
+
+  function el(name, attrs = {}, parent = svg) {
+    const node = document.createElementNS(ns, name);
+    for (const [key, value] of Object.entries(attrs)) {
+      node.setAttribute(key, value);
+    }
+    if (parent) {
+      parent.appendChild(node);
+    }
+    return node;
+  }
+
+  function text(value, x, y, attrs = {}) {
+    const node = el("text", {
+      x,
+      y,
+      "font-family": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      ...attrs
+    });
+    node.textContent = value;
+    return node;
+  }
+
+  function project(origin, point, scale = 78) {
+    return [origin[0] + point[0] * scale, origin[1] - point[1] * scale];
+  }
+
+  function line(origin, start, end, attrs = {}) {
+    const [x1, y1] = project(origin, start);
+    const [x2, y2] = project(origin, end);
+    el("line", { x1, y1, x2, y2, ...attrs });
+  }
+
+  function polygon(origin, points, attrs = {}) {
+    const projected = points.map((point) => project(origin, point).join(",")).join(" ");
+    el("polygon", { points: projected, ...attrs });
+  }
+
+  function drawGrid(origin) {
+    for (let value = -1; value <= 2; value += 0.5) {
+      line(origin, [value, -1], [value, 2], { stroke: "#dde3ec", "stroke-width": 1 });
+      line(origin, [-1, value], [2, value], { stroke: "#dde3ec", "stroke-width": 1 });
+    }
+    line(origin, [-1, 0], [2, 0], { stroke: "#9aa4b2", "stroke-width": 2 });
+    line(origin, [0, -1], [0, 2], { stroke: "#9aa4b2", "stroke-width": 2 });
+  }
+
+  const defs = el("defs");
+  const marker = el("marker", {
+    id: "det-arrowhead",
+    markerWidth: 10,
+    markerHeight: 10,
+    refX: 8,
+    refY: 3,
+    orient: "auto"
+  }, defs);
+  el("path", { d: "M0,0 L0,6 L8,3 z", fill: "#111827" }, marker);
+
+  const left = [210, 270];
+  const right = [640, 270];
+  const u = [1.25, 0.35];
+  const v = [0.45, 1.15];
+  const uPlusV = [u[0] + v[0], u[1] + v[1]];
+
+  text("basis vectors", 210, 48, { "text-anchor": "middle", "font-size": 22, "font-weight": 700, fill: "#111827" });
+  text("after applying A", 640, 48, { "text-anchor": "middle", "font-size": 22, "font-weight": 700, fill: "#111827" });
+  text("A", 486, 190, { "text-anchor": "middle", "font-size": 30, "font-weight": 800, fill: "#111827" });
+  el("path", { d: "M400 198 H560", stroke: "#4b5565", "stroke-width": 2.5, fill: "none", "marker-end": "url(#det-arrowhead)" });
+
+  drawGrid(left);
+  polygon(left, [[0, 0], [1, 0], [1, 1], [0, 1]], {
+    fill: "rgba(107,114,128,0.16)",
+    stroke: "#6b7280",
+    "stroke-width": 3,
+    "stroke-dasharray": "6 5"
+  });
+  line(left, [0, 0], [1, 0], { stroke: "#0f9f8f", "stroke-width": 5, "marker-end": "url(#det-arrowhead)" });
+  line(left, [0, 0], [0, 1], { stroke: "#c45a11", "stroke-width": 5, "marker-end": "url(#det-arrowhead)" });
+  text("e1", ...project(left, [1, 0]), { dx: 10, dy: -8, "font-size": 18, "font-weight": 700, fill: "#0f9f8f" });
+  text("e2", ...project(left, [0, 1]), { dx: 10, dy: -8, "font-size": 18, "font-weight": 700, fill: "#c45a11" });
+
+  drawGrid(right);
+  polygon(right, [[0, 0], u, uPlusV, v], {
+    fill: "rgba(124,58,237,0.20)",
+    stroke: "#7c3aed",
+    "stroke-width": 3.5,
+    "stroke-linejoin": "round"
+  });
+  line(right, [0, 0], u, { stroke: "#0f9f8f", "stroke-width": 5, "marker-end": "url(#det-arrowhead)" });
+  line(right, [0, 0], v, { stroke: "#c45a11", "stroke-width": 5, "marker-end": "url(#det-arrowhead)" });
+  text("Ae1 = (a, c)", ...project(right, u), { dx: 10, dy: -8, "font-size": 17, "font-weight": 700, fill: "#0f9f8f" });
+  text("Ae2 = (b, d)", ...project(right, v), { dx: 10, dy: -8, "font-size": 17, "font-weight": 700, fill: "#c45a11" });
+  text("signed area = det A = ad - bc", 640, 348, { "text-anchor": "middle", "font-size": 22, "font-weight": 800, fill: "#111827" });
+  host.appendChild(svg);
+})();
+</script>
+<p>The determinant</p>
 <p><span class="math display">\[
 \det A = ad-bc
 \]</span></p>
-<p>is the signed area of this parallelogram. The ordinary geometric area is</p>
+<p>is the signed area of that parallelogram. The ordinary geometric area is</p>
 <p><span class="math display">\[
 \left|\det A\right|.
 \]</span></p>
-<p><img src="figures/linear-transformations/determinant.svg" class="img-fluid" style="width:100.0%" alt="The determinant is the signed area of the parallelogram spanned by the transformed basis vectors, with determinant one, zero, and negative examples."></p>
-<p>The sign tells us about orientation:</p>
+<p>Three useful cases:</p>
 <ul>
-<li>If <span class="math inline">\(\det A&gt;0\)</span>, orientation is preserved.</li>
-<li>If <span class="math inline">\(\det A&lt;0\)</span>, orientation is reversed.</li>
-<li>If <span class="math inline">\(\det A=0\)</span>, the square collapses to a line or point. The area is zero, so the transformation cannot be inverted.</li>
+<li><span class="math inline">\(\det A=0\)</span>: area collapses to zero, so the map is not invertible.</li>
+<li><span class="math inline">\(\det A&lt;0\)</span>: orientation is reversed.</li>
+<li><span class="math inline">\(\det A=1\)</span>: signed area is preserved.</li>
 </ul>
-<p>When <span class="math inline">\(\det A=1\)</span>, the transformation preserves signed area. This is not the same thing as preserving lengths or angles. Rotations have determinant <span class="math inline">\(1\)</span>, but they are only a small subset of determinant-one transformations.</p>
-<p>For example, every shear of the form</p>
+<p>Area preservation is weaker than shape preservation. Rotations have determinant <span class="math inline">\(1\)</span>, but so do shears</p>
 <p><span class="math display">\[
 \begin{pmatrix}
 1 &amp; k\\
 0 &amp; 1
 \end{pmatrix}
 \]</span></p>
-<p>has determinant <span class="math inline">\(1\)</span>, and every reciprocal scaling</p>
+<p>and reciprocal scalings</p>
 <p><span class="math display">\[
 \begin{pmatrix}
 s &amp; 0\\
@@ -320,54 +420,24 @@ s &amp; 0\\
 \end{pmatrix}
 \qquad (s\ne 0)
 \]</span></p>
-<p>also has determinant <span class="math inline">\(1\)</span>. These transformations can visibly stretch or shear a shape while keeping its area unchanged.</p>
-<p>The determinant-one linear transformations form the group</p>
+<p>These all belong to</p>
 <p><span class="math display">\[
 SL(2,\mathbb{R})=\{A\in GL(2,\mathbb{R})\mid \det A=1\}.
 \]</span></p>
-<p>Rotations are the stricter special case where lengths and angles are also preserved:</p>
+<p>Rotations are the stricter determinant-one maps that also preserve lengths and angles:</p>
 <p><span class="math display">\[
 A^TA=I,
 \qquad
 \det A=1.
 \]</span></p>
-<p>The condition <span class="math inline">\(A^TA=I\)</span> has a direct geometric meaning: <span class="math inline">\(A\)</span> preserves dot products. For any two vectors <span class="math inline">\(u\)</span> and <span class="math inline">\(v\)</span>,</p>
+<p>The condition <span class="math inline">\(A^TA=I\)</span> means that dot products are preserved:</p>
 <p><span class="math display">\[
 (Au)\cdot(Av)
-=(Au)^T(Av)
-=u^TA^TAv.
+=u^TA^TAv
+=u^Tv
+=u\cdot v.
 \]</span></p>
-<p>If <span class="math inline">\(A^TA=I\)</span>, then</p>
-<p><span class="math display">\[
-(Au)\cdot(Av)=u^Tv=u\cdot v.
-\]</span></p>
-<p>This implies that lengths are preserved, because</p>
-<p><span class="math display">\[
-\|Av\|^2=(Av)\cdot(Av)=v\cdot v=\|v\|^2.
-\]</span></p>
-<p>It also implies that angles are preserved, since angles are determined by dot products:</p>
-<p><span class="math display">\[
-u\cdot v=\|u\|\,\|v\|\cos\theta.
-\]</span></p>
-<p>There is also a useful column-vector interpretation. If</p>
-<p><span class="math display">\[
-A=\begin{pmatrix} | &amp; | \\ a_1 &amp; a_2 \\ | &amp; | \end{pmatrix},
-\]</span></p>
-<p>then</p>
-<p><span class="math display">\[
-A^TA=
-\begin{pmatrix}
-a_1\cdot a_1 &amp; a_1\cdot a_2\\
-a_2\cdot a_1 &amp; a_2\cdot a_2
-\end{pmatrix}.
-\]</span></p>
-<p>So <span class="math inline">\(A^TA=I\)</span> says that the columns of <span class="math inline">\(A\)</span> have length <span class="math inline">\(1\)</span> and are perpendicular:</p>
-<p><span class="math display">\[
-a_1\cdot a_1=1,\qquad
-a_2\cdot a_2=1,\qquad
-a_1\cdot a_2=0.
-\]</span></p>
-<p>In other words, <span class="math inline">\(A\)</span> sends the standard basis to another orthonormal basis. In two dimensions, such a transformation can only rotate or reflect the plane. The extra condition <span class="math inline">\(\det A=1\)</span> rules out reflections, leaving rotations.</p>
+<p>So lengths and angles are preserved. Equivalently, the columns of <span class="math inline">\(A\)</span> form an orthonormal basis. In two dimensions, <span class="math inline">\(A^TA=I\)</span> allows rotations and reflections; the extra condition <span class="math inline">\(\det A=1\)</span> rules out reflections.</p>
 
 
 </section>
