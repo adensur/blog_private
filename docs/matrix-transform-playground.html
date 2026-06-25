@@ -188,39 +188,41 @@ ul.task-list li input[type="checkbox"] {
   }
 
   .matrix-playground {
-    min-height: calc(100vh - 76px);
-    padding: clamp(14px, 2vw, 28px);
+    height: calc(100vh - 64px);
+    min-height: 760px;
+    padding: 10px 14px 14px;
     background: #f5f7fb;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 10px;
   }
 
   .matrix-playground-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 18px;
-    margin-bottom: 18px;
+    align-items: center;
+    gap: 12px;
   }
 
   .matrix-playground-title {
     margin: 0;
-    font-size: clamp(1.8rem, 3vw, 3.4rem);
-    line-height: 1.05;
-    font-weight: 760;
+    font-size: 1.35rem;
+    line-height: 1.1;
+    font-weight: 740;
     color: #111827;
   }
 
   .matrix-playground-subtitle {
-    margin: 8px 0 0;
-    max-width: 900px;
-    font-size: clamp(1rem, 1.25vw, 1.3rem);
+    margin: 2px 0 0;
+    font-size: 0.9rem;
     color: #4b5565;
   }
 
   .matrix-playground-shell {
     display: grid;
-    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
-    gap: 20px;
-    min-height: min(820px, calc(100vh - 190px));
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
   }
 
   .matrix-panel,
@@ -232,47 +234,51 @@ ul.task-list li input[type="checkbox"] {
   }
 
   .matrix-panel {
-    padding: 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: auto minmax(280px, 460px) minmax(280px, 1fr) minmax(260px, 360px) auto;
+    gap: 10px;
+    align-items: center;
   }
 
   .matrix-controls-title {
-    font-size: 1.25rem;
+    font-size: 0.95rem;
     font-weight: 750;
     color: #111827;
+    white-space: nowrap;
   }
 
   .matrix-input-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
+    grid-template-columns: repeat(4, minmax(62px, 1fr));
+    gap: 8px;
   }
 
   .matrix-input-grid label {
     display: grid;
-    gap: 6px;
-    font-size: 1.05rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
     color: #4b5565;
     font-weight: 650;
   }
 
   .matrix-input-grid input {
     width: 100%;
-    min-height: 64px;
+    min-height: 34px;
     border: 1px solid #b9c3d2;
-    border-radius: 8px;
-    padding: 8px 12px;
+    border-radius: 6px;
+    padding: 5px 7px;
     font: inherit;
-    font-size: 1.75rem;
-    font-weight: 680;
+    font-size: 1rem;
+    font-weight: 620;
     background: #ffffff;
     color: #111827;
   }
 
   .matrix-display {
-    display: grid;
+    display: none;
     grid-template-columns: auto 1fr 1fr auto;
     gap: 10px 16px;
     align-items: center;
@@ -295,20 +301,20 @@ ul.task-list li input[type="checkbox"] {
 
   .matrix-presets {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(6, minmax(62px, 1fr));
+    gap: 6px;
   }
 
   .matrix-presets button,
   .matrix-action {
     border: 1px solid #b9c3d2;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #ffffff;
     color: #1f2937;
-    padding: 13px 14px;
+    padding: 8px 9px;
     font: inherit;
-    font-size: 1.05rem;
-    font-weight: 680;
+    font-size: 0.9rem;
+    font-weight: 650;
     cursor: pointer;
   }
 
@@ -320,7 +326,7 @@ ul.task-list li input[type="checkbox"] {
   .matrix-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 6px;
   }
 
   .matrix-action-primary {
@@ -335,42 +341,43 @@ ul.task-list li input[type="checkbox"] {
 
   .matrix-stats {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .matrix-stat {
     display: flex;
     justify-content: space-between;
-    gap: 18px;
+    gap: 8px;
     border: 1px solid #e3e7ef;
-    border-radius: 8px;
-    padding: 14px 16px;
-    font-size: 1.08rem;
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 0.8rem;
     color: #4b5565;
   }
 
   .matrix-stat strong {
     color: #111827;
-    font-size: 1.35rem;
+    font-size: 0.9rem;
     font-weight: 760;
   }
 
   .matrix-stage {
     min-width: 0;
-    padding: 16px;
+    min-height: 0;
+    padding: 8px;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
-    gap: 12px;
+    gap: 6px;
   }
 
   .matrix-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px 18px;
+    gap: 8px 14px;
     align-items: center;
     color: #4b5565;
-    font-size: 1rem;
+    font-size: 0.85rem;
   }
 
   .matrix-legend span {
@@ -381,8 +388,8 @@ ul.task-list li input[type="checkbox"] {
   }
 
   .legend-line {
-    width: 32px;
-    height: 5px;
+    width: 24px;
+    height: 4px;
     border-radius: 999px;
     display: inline-block;
   }
@@ -391,50 +398,51 @@ ul.task-list li input[type="checkbox"] {
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 560px;
+    min-height: 0;
     background: #ffffff;
   }
 
   .matrix-playground:fullscreen {
+    height: 100vh;
     min-height: 100vh;
-    padding: 24px;
+    padding: 10px;
   }
 
   .matrix-playground:fullscreen .matrix-playground-shell {
-    min-height: calc(100vh - 140px);
+    min-height: 0;
   }
 
-  .matrix-playground:fullscreen .matrix-canvas {
-    min-height: calc(100vh - 230px);
+  @media (max-width: 1180px) {
+    .matrix-panel {
+      grid-template-columns: auto minmax(260px, 1fr) minmax(220px, 1fr);
+    }
+    .matrix-actions {
+      grid-column: 1 / span 2;
+    }
+    .matrix-stats {
+      grid-column: 3;
+    }
   }
 
-  @media (max-width: 980px) {
-    .matrix-playground-shell {
+  @media (max-width: 760px) {
+    .matrix-playground {
+      height: auto;
+      min-height: 100vh;
+    }
+    .matrix-playground-header,
+    .matrix-panel {
+      display: grid;
       grid-template-columns: 1fr;
     }
-
-    .matrix-canvas {
-      min-height: 520px;
-    }
-  }
-
-  @media (max-width: 620px) {
-    .matrix-playground {
-      padding: 10px;
-    }
-
-    .matrix-playground-header {
-      display: grid;
-    }
-
     .matrix-input-grid,
     .matrix-presets,
-    .matrix-actions {
-      grid-template-columns: 1fr;
+    .matrix-actions,
+    .matrix-stats {
+      grid-template-columns: 1fr 1fr;
+      grid-column: auto;
     }
-
-    .matrix-canvas {
-      min-height: 430px;
+    .matrix-stage {
+      min-height: 65vh;
     }
   }
 </style>
@@ -443,7 +451,7 @@ ul.task-list li input[type="checkbox"] {
   <header class="matrix-playground-header">
     <div>
       <h1 class="matrix-playground-title">Matrix Transformation Playground</h1>
-      <p class="matrix-playground-subtitle">Change the entries of a 2x2 matrix and watch the grid, basis vectors, unit square, and arrow-shaped region transform.</p>
+      <p class="matrix-playground-subtitle">Change a 2x2 matrix and watch a shape transform.</p>
     </div>
     <a class="matrix-action" href="linear-transformations.html">Back to chapter</a>
   </header>
@@ -452,10 +460,10 @@ ul.task-list li input[type="checkbox"] {
     <section class="matrix-panel" aria-label="Matrix controls">
       <div class="matrix-controls-title">Matrix entries</div>
       <div class="matrix-input-grid">
-        <label>a<input id="matrix-a" type="number" step="0.1" value="1" inputmode="decimal"></label>
-        <label>b<input id="matrix-b" type="number" step="0.1" value="0.6" inputmode="decimal"></label>
-        <label>c<input id="matrix-c" type="number" step="0.1" value="-0.3" inputmode="decimal"></label>
-        <label>d<input id="matrix-d" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>a <input id="matrix-a" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>b <input id="matrix-b" type="number" step="0.1" value="0.6" inputmode="decimal"></label>
+        <label>c <input id="matrix-c" type="number" step="0.1" value="-0.3" inputmode="decimal"></label>
+        <label>d <input id="matrix-d" type="number" step="0.1" value="1" inputmode="decimal"></label>
       </div>
 
       <div class="matrix-display" aria-label="Current matrix">
@@ -496,7 +504,7 @@ ul.task-list li input[type="checkbox"] {
         <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
         <span><i class="legend-line" style="background:#7c3aed"></i>transformed arrow shape</span>
       </div>
-      <svg class="matrix-canvas" id="matrix-svg" viewbox="0 0 1000 760" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
+      <svg class="matrix-canvas" id="matrix-svg" viewbox="0 0 1600 940" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
     </section>
   </div>
 </div>
@@ -524,19 +532,19 @@ ul.task-list li input[type="checkbox"] {
   const fullscreenButton = document.getElementById("matrix-fullscreen");
   const presets = document.querySelectorAll("#matrix-playground [data-matrix]");
 
-  const width = 1000;
-  const height = 760;
-  const margin = 70;
-  const gridExtent = 4;
+  const width = 1600;
+  const height = 940;
+  const margin = 8;
+  const gridExtent = 2;
   const defaultMatrix = [1, 0.6, -0.3, 1];
   const arrowShape = [
-    [-2.2, -0.55],
-    [0.15, -0.55],
-    [0.15, -1.05],
-    [1.35, 0],
-    [0.15, 1.05],
-    [0.15, 0.55],
-    [-2.2, 0.55],
+    [-3.2, -0.95],
+    [0.45, -0.95],
+    [0.45, -1.75],
+    [2.95, 0],
+    [0.45, 1.75],
+    [0.45, 0.95],
+    [-3.2, 0.95],
   ];
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
@@ -581,12 +589,9 @@ ul.task-list li input[type="checkbox"] {
 
   function viewport(matrix) {
     const points = linePoints(matrix);
-    const maxAbs = Math.max(
-      1,
-      ...points.map(([x, y]) => Math.max(Math.abs(x), Math.abs(y)))
-    );
-    const world = Math.ceil(maxAbs * 1.15);
-    const scale = Math.min((width - 2 * margin) / (2 * world), (height - 2 * margin) / (2 * world));
+    const maxX = Math.max(1, ...points.map(([x]) => Math.abs(x)));
+    const maxY = Math.max(1, ...points.map(([, y]) => Math.abs(y)));
+    const scale = Math.min((width - 2 * margin) / (2 * maxX), (height - 2 * margin) / (2 * maxY));
 
     return {
       project([x, y]) {
