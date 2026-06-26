@@ -1,5 +1,6 @@
 ---
 title: "Linear Algebra"
+jupyter: python3
 ---
 
 # Transformations of Vector Spaces and Linear Transformations
@@ -42,7 +43,149 @@ $$
 
 This is the visual difference: a linear map can rotate, scale, shear, and reflect, but it sends straight grid lines to straight grid lines. A non-linear map can bend the grid itself.
 
-![The same set under linear and non-linear transformations](figures/linear-algebra/transformations-shape.svg){#fig-transformations width="697px"}
+```{python}
+#| label: fig-transformations
+#| fig-cap: "The same set under linear and non-linear transformations."
+#| fig-alt: "Three panels show the same square, grid, arrow, and landmark points before transformation, after a linear map, and after a non-linear map."
+#| echo: true
+
+import math
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.patches import Polygon
+
+
+def sample_segment(start, end, n=80):
+    start = np.asarray(start, dtype=float)
+    end = np.asarray(end, dtype=float)
+    t = np.linspace(0, 1, n)
+    return start + (end - start) * t[:, None]
+
+
+def sample_polyline(points, n_per_segment=80, closed=False):
+    pts = list(points)
+    if closed:
+        pts.append(pts[0])
+
+    segments = []
+    for i, (start, end) in enumerate(zip(pts[:-1], pts[1:])):
+        segment = sample_segment(start, end, n_per_segment)
+        if i < len(pts) - 2:
+            segment = segment[:-1]
+        segments.append(segment)
+
+    return np.vstack(segments)
+
+
+def transform_points(points, transform):
+    return np.array([transform(point) for point in points])
+
+
+def identity(point):
+    return np.asarray(point, dtype=float)
+
+
+def linear_map(point):
+    x, y = point
+    return np.array([1.15 * x + 0.55 * y, -0.25 * x + 0.9 * y])
+
+
+def nonlinear_map(point):
+    x, y = point
+    angle = 0.75 * (x * x + y * y) + 0.25 * x
+    warped_x = x * math.cos(angle) - y * math.sin(angle)
+    warped_y = x * math.sin(angle) + y * math.cos(angle)
+    warped_y += 0.18 * math.sin(math.pi * x)
+    return np.array([warped_x, warped_y])
+
+
+def grid_lines():
+    values = np.linspace(-1, 1, 5)
+    lines = []
+    for value in values:
+        lines.append(sample_segment((-1, value), (1, value)))
+        lines.append(sample_segment((value, -1), (value, 1)))
+    return lines
+
+
+boundary = sample_polyline(
+    [(-1, -1), (1, -1), (1, 1), (-1, 1)],
+    closed=True,
+)
+arrow = sample_polyline(
+    [
+        (-0.65, -0.35),
+        (0.20, -0.35),
+        (0.20, -0.68),
+        (0.75, 0),
+        (0.20, 0.68),
+        (0.20, 0.35),
+        (-0.65, 0.35),
+        (-0.65, -0.35),
+    ],
+)
+landmarks = np.array([[-0.72, 0.72], [0.72, 0.72], [0.72, -0.72]])
+
+fig, axes = plt.subplots(1, 3, figsize=(10.5, 4.2), constrained_layout=True)
+panels = [
+    ("Original set", identity),
+    ("Linear map", linear_map),
+    ("Non-linear map", nonlinear_map),
+]
+
+for ax, (title, transform) in zip(axes, panels):
+    for line in grid_lines():
+        mapped = transform_points(line, transform)
+        ax.plot(mapped[:, 0], mapped[:, 1], color="#c9ced6", linewidth=0.9)
+
+    x_axis = transform_points(sample_segment((-1.85, 0), (1.85, 0)), transform)
+    y_axis = transform_points(sample_segment((0, -1.85), (0, 1.85)), transform)
+    ax.plot(x_axis[:, 0], x_axis[:, 1], color="#8f96a3", linewidth=1.2)
+    ax.plot(y_axis[:, 0], y_axis[:, 1], color="#8f96a3", linewidth=1.2)
+
+    mapped_boundary = transform_points(boundary, transform)
+    mapped_arrow = transform_points(arrow, transform)
+    mapped_landmarks = transform_points(landmarks, transform)
+
+    ax.plot(
+        mapped_boundary[:, 0],
+        mapped_boundary[:, 1],
+        color="#2f6fdd",
+        linewidth=2.4,
+    )
+    ax.plot(
+        mapped_arrow[:, 0],
+        mapped_arrow[:, 1],
+        color="#1b1d24",
+        linewidth=2.2,
+    )
+    ax.scatter(
+        mapped_landmarks[:, 0],
+        mapped_landmarks[:, 1],
+        s=54,
+        color=["#d64045", "#f4a261", "#2a9d8f"],
+        edgecolor="white",
+        linewidth=0.9,
+        zorder=3,
+    )
+
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_aspect("equal")
+    ax.set_xlim(-1.85, 1.85)
+    ax.set_ylim(-1.85, 1.85)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("#d8dbe1")
+
+fig.suptitle(
+    "The same set under linear and non-linear transformations",
+    fontsize=14,
+    fontweight="bold",
+)
+plt.show()
+```
 
 The middle panel in @fig-transformations uses
 

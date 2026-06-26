@@ -4,6 +4,11 @@ project:
   render:
     - "*.qmd"
 
+jupyter: python3
+
+filters:
+  - shinylive
+
 website:
   title: "Physics Journal"
   navbar:
@@ -31,6 +36,7 @@ format:
     html-math-method: mathjax
     code-fold: true
     fig-responsive: true
+    fig-format: svg
 
 execute:
   freeze: auto

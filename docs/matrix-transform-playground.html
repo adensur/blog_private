@@ -43,6 +43,11 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="site_libs/bootstrap/bootstrap-3f3878107f510fd5e1cfc12aa424597c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<meta name="shinylive:serviceworker_dir" content=".">
+<script src="site_libs/quarto-contrib/shinylive-0.10.12/shinylive/load-shinylive-sw.js" type="module"></script>
+<script src="site_libs/quarto-contrib/shinylive-0.10.12/shinylive/run-python-blocks.js" type="module"></script>
+<link href="site_libs/quarto-contrib/shinylive-0.10.12/shinylive/shinylive.css" rel="stylesheet">
+<link href="site_libs/quarto-contrib/shinylive-quarto-css/shinylive-quarto.css" rel="stylesheet">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -161,7 +166,7 @@ ul.task-list li input[type="checkbox"] {
 <!-- margin-sidebar -->
     
 <!-- main -->
-<main class="content column-page-right" id="quarto-document-content">
+<main class="content page-columns page-full column-body" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
@@ -170,7 +175,7 @@ ul.task-list li input[type="checkbox"] {
 
 
 
-<div class="quarto-title-meta column-page-right">
+<div class="quarto-title-meta column-body">
 
     
   
@@ -182,617 +187,364 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<style>
-  .quarto-title-block {
-    display: none;
-  }
+<div class="column-screen-inset">
+<pre class="shinylive-python" data-engine="python"><code>#| '!! shinylive warning !!': |
+#|   shinylive does not work in self-contained HTML documents.
+#|   Please set `embed-resources: false` in your metadata.
+#| standalone: true
+#| viewerHeight: 900
 
-  .matrix-playground {
-    height: calc(100vh - 64px);
-    min-height: 760px;
-    padding: 10px 14px 14px;
-    background: #f5f7fb;
-    display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    gap: 10px;
-  }
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.patches import Polygon
+from shiny import App, reactive, render, ui
 
-  .matrix-playground-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-  }
+DEFAULT_MATRIX = (1.0, 0.6, -0.3, 1.0)
+PRESETS = {
+    "": "Preset...",
+    "1,0,0,1": "Identity",
+    "1,0.8,0,1": "Shear",
+    "0,-1,1,0": "Rotate 90",
+    "1,0,0,-1": "Reflect",
+    "1,0,0,0": "Project",
+    "1.2,0.7,-0.4,0.9": "Mixed",
+}
 
-  .matrix-playground-title {
-    margin: 0;
-    font-size: 1.35rem;
-    line-height: 1.1;
-    font-weight: 740;
-    color: #111827;
-  }
+ARROW_SHAPE = 0.58 * np.array(
+    [
+        [-1.6, -0.475],
+        [0.225, -0.475],
+        [0.225, -0.875],
+        [1.475, 0],
+        [0.225, 0.875],
+        [0.225, 0.475],
+        [-1.6, 0.475],
+    ]
+)
+UNIT_SQUARE = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
 
-  .matrix-playground-subtitle {
-    margin: 2px 0 0;
-    font-size: 0.9rem;
-    color: #4b5565;
-  }
 
-  .matrix-playground-shell {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 10px;
-    min-height: 0;
-  }
+def apply_matrix(matrix, points):
+    return points @ matrix.T
 
-  .matrix-panel,
-  .matrix-stage {
-    border: 1px solid #d6dde8;
-    border-radius: 10px;
-    background: #ffffff;
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
-  }
 
-  .matrix-panel {
-    padding: 9px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-    align-items: center;
-  }
+def grid_segments(extent=2):
+    segments = []
+    for value in range(-extent, extent + 1):
+        segments.append(
+            (
+                np.array([value, -extent], dtype=float),
+                np.array([value, extent], dtype=float),
+                "vertical",
+            )
+        )
+        segments.append(
+            (
+                np.array([-extent, value], dtype=float),
+                np.array([extent, value], dtype=float),
+                "horizontal",
+            )
+        )
+    return segments
 
-  .matrix-controls-title {
-    font-size: 0.95rem;
-    font-weight: 750;
-    color: #111827;
-    white-space: nowrap;
-  }
 
-  .matrix-input-grid {
-    display: grid;
-    grid-template-columns: auto 1fr 1fr auto;
-    grid-template-rows: 1fr 1fr;
-    gap: 5px 8px;
-    align-items: center;
-    flex: 0 1 270px;
-    padding: 4px 0;
-  }
+def transformed_points_for_scale(matrix):
+    points = []
+    for start, end, _kind in grid_segments():
+        points.extend([start, end])
+        points.extend(apply_matrix(matrix, np.array([start, end])))
+    points.extend(ARROW_SHAPE)
+    points.extend(apply_matrix(matrix, ARROW_SHAPE))
+    points.extend(UNIT_SQUARE)
+    points.extend(apply_matrix(matrix, UNIT_SQUARE))
+    points.extend([[1, 0], [0, 1]])
+    points.extend(apply_matrix(matrix, np.array([[1, 0], [0, 1]])))
+    return np.array(points)
 
-  .matrix-input-grid label {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
-    color: #4b5565;
-    font-weight: 650;
-  }
 
-  .matrix-input-grid input {
-    width: 100%;
-    min-height: 30px;
-    border: 1px solid #b9c3d2;
-    border-radius: 6px;
-    padding: 4px 7px;
-    font: inherit;
-    font-size: 0.95rem;
-    font-weight: 620;
-    background: #ffffff;
-    color: #111827;
-  }
+def draw_grid(ax, matrix=None):
+    vertical_light = "#cfd6e3" if matrix is None else "#2f6fdd"
+    horizontal_light = "#cfd6e3" if matrix is None else "#e07a2f"
+    vertical_strong = "#9aa4b2" if matrix is None else "#184fa3"
+    horizontal_strong = "#9aa4b2" if matrix is None else "#b45309"
 
-  .matrix-bracket {
-    grid-row: span 2;
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    font-size: 4.15rem;
-    line-height: 0.8;
-    color: #64748b;
-    font-weight: 300;
-    transform: translateY(-2px);
-  }
+    for start, end, kind in grid_segments():
+        points = np.array([start, end])
+        if matrix is not None:
+            points = apply_matrix(matrix, points)
 
-  .matrix-preset,
-  .matrix-action {
-    border: 1px solid #b9c3d2;
-    border-radius: 6px;
-    background: #ffffff;
-    color: #1f2937;
-    padding: 8px 9px;
-    font: inherit;
-    font-size: 0.9rem;
-    font-weight: 650;
-    cursor: pointer;
-  }
+        strong = abs(start[0]) &lt; 1e-9 if kind == "vertical" else abs(start[1]) &lt; 1e-9
+        if strong and kind == "vertical":
+            color = vertical_strong
+        elif strong:
+            color = horizontal_strong
+        elif kind == "vertical":
+            color = vertical_light
+        else:
+            color = horizontal_light
 
-  .matrix-preset {
-    flex: 0 1 160px;
-    min-height: 36px;
-  }
+        ax.plot(points[:, 0], points[:, 1], color=color, linewidth=2.1 if strong else 1.1, alpha=0.9)
 
-  .matrix-preset:hover,
-  .matrix-action:hover {
-    background: #edf2f7;
-  }
 
-  .matrix-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    flex: 0 1 210px;
-  }
+def draw_vector(ax, start, end, label, color):
+    ax.annotate(
+        "",
+        xy=end,
+        xytext=start,
+        arrowprops={
+            "arrowstyle": "-|&gt;",
+            "color": color,
+            "linewidth": 3.0,
+            "mutation_scale": 22,
+        },
+    )
+    ax.text(
+        end[0] + 0.08,
+        end[1] + 0.08,
+        label,
+        color=color,
+        fontsize=13,
+        fontweight="bold",
+    )
 
-  .matrix-action-primary {
-    background: #111827;
-    border-color: #111827;
-    color: #ffffff;
-  }
 
-  .matrix-action-primary:hover {
-    background: #273244;
-  }
+def draw_panel(ax, title, matrix=None):
+    transform = (lambda points: points) if matrix is None else (lambda points: apply_matrix(matrix, points))
+    draw_grid(ax, matrix)
 
-  .matrix-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    flex: 0 1 300px;
-    min-width: 300px;
-  }
+    arrow = transform(ARROW_SHAPE)
+    square = transform(UNIT_SQUARE)
+    e1, e2 = transform(np.array([[1, 0], [0, 1]], dtype=float))
 
-  .matrix-stat {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #e3e7ef;
-    border-radius: 6px;
-    padding: 7px 8px;
-    font-size: 0.8rem;
-    color: #4b5565;
-  }
+    ax.add_patch(
+        Polygon(
+            arrow,
+            closed=True,
+            facecolor="#d1d5db" if matrix is None else "#ddd6fe",
+            edgecolor="#6b7280" if matrix is None else "#7c3aed",
+            linewidth=2.6,
+            alpha=0.65,
+        )
+    )
+    ax.add_patch(
+        Polygon(
+            square,
+            closed=True,
+            facecolor="#99f6e4",
+            edgecolor="#159a8a",
+            linewidth=2.0,
+            alpha=0.28,
+        )
+    )
+    draw_vector(ax, np.array([0, 0]), e1, "e1" if matrix is None else "Ae1", "#159a8a")
+    draw_vector(ax, np.array([0, 0]), e2, "e2" if matrix is None else "Ae2", "#b45309")
+    ax.scatter([0], [0], color="#111827", s=32, zorder=5)
+    ax.set_title(title, fontsize=15, fontweight="bold", loc="left")
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_color("#d6dde8")
+        spine.set_linewidth(1.1)
 
-  .matrix-stat span {
-    white-space: nowrap;
-  }
 
-  .matrix-stat strong {
-    color: #111827;
-    font-size: 0.9rem;
-    font-weight: 760;
-  }
+def matrix_from_input(input):
+    return np.array(
+        [
+            [input.a(), input.b()],
+            [input.c(), input.d()],
+        ],
+        dtype=float,
+    )
 
-  .matrix-stage {
-    min-width: 0;
-    min-height: 0;
-    padding: 8px;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 6px;
-  }
 
-  .matrix-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-    align-items: center;
-    color: #4b5565;
-    font-size: 0.85rem;
-  }
+app_ui = ui.page_fluid(
+    ui.tags.style(
+        """
+        body {
+          background: #f5f7fb;
+        }
+        .matrix-playground {
+          min-height: calc(100vh - 64px);
+          padding: 10px 14px 14px;
+          background: #f5f7fb;
+        }
+        .matrix-playground-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+        .matrix-playground-title {
+          margin: 0;
+          font-size: 1.35rem;
+          line-height: 1.1;
+          font-weight: 740;
+          color: #111827;
+        }
+        .matrix-playground-subtitle {
+          margin: 2px 0 0;
+          font-size: 0.9rem;
+          color: #4b5565;
+        }
+        .matrix-controls {
+          border: 1px solid #d6dde8;
+          border-radius: 10px;
+          background: #ffffff;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+          padding: 9px;
+          display: grid;
+          grid-template-columns: auto repeat(4, minmax(90px, 1fr)) minmax(150px, 1.2fr) auto;
+          gap: 8px;
+          align-items: end;
+          margin-bottom: 10px;
+        }
+        .matrix-controls-title {
+          align-self: center;
+          font-weight: 760;
+          color: #111827;
+          white-space: nowrap;
+        }
+        .matrix-controls .form-group,
+        .matrix-controls .form-select {
+          margin-bottom: 0;
+        }
+        .matrix-stats {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 10px;
+          flex-wrap: wrap;
+        }
+        .matrix-stat {
+          min-width: 190px;
+          border: 1px solid #e3e7ef;
+          border-radius: 8px;
+          background: #ffffff;
+          padding: 8px 10px;
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          color: #4b5565;
+        }
+        .matrix-stat strong {
+          color: #111827;
+        }
+        .matrix-action-link {
+          border: 1px solid #b9c3d2;
+          border-radius: 6px;
+          background: #ffffff;
+          color: #1f2937;
+          padding: 8px 10px;
+          font-weight: 650;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        .matrix-plot-shell {
+          border: 1px solid #d6dde8;
+          border-radius: 10px;
+          background: #ffffff;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+          padding: 8px;
+        }
+        .shiny-plot-output img {
+          width: 100%;
+        }
+        @media (max-width: 980px) {
+          .matrix-controls {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .matrix-controls-title {
+            grid-column: 1 / -1;
+          }
+        }
+        """
+    ),
+    ui.div(
+        ui.tags.header(
+            ui.div(
+                ui.h1("Matrix Transformation Playground", class_="matrix-playground-title"),
+                ui.p("Change a 2x2 matrix and watch a shape transform.", class_="matrix-playground-subtitle"),
+            ),
+            ui.a("Back to chapter", href="linear-transformations.html", class_="matrix-action-link"),
+            class_="matrix-playground-header",
+        ),
+        ui.tags.section(
+            ui.div("Matrix entries", class_="matrix-controls-title"),
+            ui.input_numeric("a", "a", DEFAULT_MATRIX[0], step=0.1, width="100%"),
+            ui.input_numeric("b", "b", DEFAULT_MATRIX[1], step=0.1, width="100%"),
+            ui.input_numeric("c", "c", DEFAULT_MATRIX[2], step=0.1, width="100%"),
+            ui.input_numeric("d", "d", DEFAULT_MATRIX[3], step=0.1, width="100%"),
+            ui.input_select("preset", "Preset", PRESETS, width="100%"),
+            ui.input_action_button("reset", "Reset", class_="btn btn-outline-secondary"),
+            class_="matrix-controls",
+        ),
+        ui.output_ui("matrix_stats"),
+        ui.div(
+            ui.output_plot("matrix_plot", height="760px"),
+            class_="matrix-plot-shell",
+        ),
+        class_="matrix-playground",
+    ),
+)
 
-  .matrix-legend span {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    white-space: nowrap;
-  }
 
-  .legend-line {
-    width: 24px;
-    height: 4px;
-    border-radius: 999px;
-    display: inline-block;
-  }
+def server(input, output, session):
+    @reactive.effect
+    @reactive.event(input.reset)
+    def _reset_matrix():
+        ui.update_numeric("a", value=DEFAULT_MATRIX[0])
+        ui.update_numeric("b", value=DEFAULT_MATRIX[1])
+        ui.update_numeric("c", value=DEFAULT_MATRIX[2])
+        ui.update_numeric("d", value=DEFAULT_MATRIX[3])
 
-  .matrix-canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    background: #ffffff;
-  }
+    @reactive.effect
+    def _apply_preset():
+        selected = input.preset()
+        if not selected:
+            return
+        values = [float(value) for value in selected.split(",")]
+        ui.update_numeric("a", value=values[0])
+        ui.update_numeric("b", value=values[1])
+        ui.update_numeric("c", value=values[2])
+        ui.update_numeric("d", value=values[3])
+        ui.update_select("preset", selected="")
 
-  .matrix-playground:fullscreen {
-    height: 100vh;
-    min-height: 100vh;
-    padding: 10px;
-  }
+    @output
+    @render.ui
+    def matrix_stats():
+        matrix = matrix_from_input(input)
+        det = float(np.linalg.det(matrix))
+        orientation = "collapsed" if abs(det) &lt; 1e-9 else "preserved" if det &gt; 0 else "reversed"
+        return ui.div(
+            ui.div(ui.span("determinant"), ui.strong(f"{det:.3f}"), class_="matrix-stat"),
+            ui.div(ui.span("area scale"), ui.strong(f"{abs(det):.3f}"), class_="matrix-stat"),
+            ui.div(ui.span("orientation"), ui.strong(orientation), class_="matrix-stat"),
+            class_="matrix-stats",
+        )
 
-  .matrix-playground:fullscreen .matrix-playground-shell {
-    min-height: 0;
-  }
+    @output
+    @render.plot(alt="Side-by-side plots of the original grid and arrow shape and their transformed image under a two by two matrix.")
+    def matrix_plot():
+        matrix = matrix_from_input(input)
+        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
 
-  @media (max-width: 1180px) {
-    .matrix-stats {
-      order: 10;
-      flex-basis: 100%;
-    }
-  }
+        draw_panel(axes[0], "Original")
+        draw_panel(axes[1], "Transformed by A", matrix)
 
-  @media (max-width: 760px) {
-    .matrix-playground {
-      height: auto;
-      min-height: 100vh;
-    }
-    .matrix-playground-header,
-    .matrix-panel {
-      display: grid;
-      grid-template-columns: 1fr;
-    }
-    .matrix-input-grid,
-    .matrix-actions,
-    .matrix-stats {
-      grid-template-columns: 1fr 1fr;
-      grid-column: auto;
-    }
-    .matrix-stage {
-      min-height: 65vh;
-    }
-  }
-</style>
+        all_points = transformed_points_for_scale(matrix)
+        limit = max(2.2, float(np.max(np.abs(all_points))) * 1.15)
+        for ax in axes:
+            ax.set_xlim(-limit, limit)
+            ax.set_ylim(-limit, limit)
 
-<div class="matrix-playground" id="matrix-playground">
-  <header class="matrix-playground-header">
-    <div>
-      <h1 class="matrix-playground-title">Matrix Transformation Playground</h1>
-      <p class="matrix-playground-subtitle">Change a 2x2 matrix and watch a shape transform.</p>
-    </div>
-    <a class="matrix-action" href="linear-transformations.html">Back to chapter</a>
-  </header>
+        fig.patch.set_facecolor("#ffffff")
+        fig.tight_layout()
+        return fig
 
-  <div class="matrix-playground-shell">
-    <section class="matrix-panel" aria-label="Matrix controls">
-      <div class="matrix-controls-title">Matrix entries</div>
-      <div class="matrix-input-grid" aria-label="Matrix entries">
-        <span class="matrix-bracket">[</span>
-        <label>a <input id="matrix-a" type="number" step="0.1" value="1" inputmode="decimal"></label>
-        <label>b <input id="matrix-b" type="number" step="0.1" value="0.6" inputmode="decimal"></label>
-        <span class="matrix-bracket">]</span>
-        <label>c <input id="matrix-c" type="number" step="0.1" value="-0.3" inputmode="decimal"></label>
-        <label>d <input id="matrix-d" type="number" step="0.1" value="1" inputmode="decimal"></label>
-      </div>
 
-      <select class="matrix-preset" id="matrix-preset" aria-label="Preset matrix">
-        <option value="">Preset...</option>
-        <option value="1,0,0,1">Identity</option>
-        <option value="1,0.8,0,1">Shear</option>
-        <option value="0,-1,1,0">Rotate 90</option>
-        <option value="1,0,0,-1">Reflect</option>
-        <option value="1,0,0,0">Project</option>
-        <option value="1.2,0.7,-0.4,0.9">Mixed</option>
-      </select>
-
-      <div class="matrix-actions">
-        <button type="button" class="matrix-action" id="matrix-reset">Reset</button>
-        <button type="button" class="matrix-action matrix-action-primary" id="matrix-fullscreen">Fullscreen</button>
-      </div>
-
-      <div class="matrix-stats" aria-live="polite">
-        <div class="matrix-stat"><span>det</span><strong id="matrix-det">1.00</strong></div>
-        <div class="matrix-stat"><span>area</span><strong id="matrix-area">1.00</strong></div>
-        <div class="matrix-stat"><span>orient.</span><strong id="matrix-orientation">preserved</strong></div>
-      </div>
-    </section>
-
-    <section class="matrix-stage" aria-label="Transformed grid visualization">
-      <div class="matrix-legend">
-        <span><i class="legend-line" style="background:#cfd6e3"></i>original grid</span>
-        <span><i class="legend-line" style="background:#2f6fdd"></i>transformed vertical lines</span>
-        <span><i class="legend-line" style="background:#e07a2f"></i>transformed horizontal lines</span>
-        <span><i class="legend-line" style="background:#159a8a"></i>basis vectors</span>
-        <span><i class="legend-line" style="background:#7c3aed"></i>transformed arrow shape</span>
-      </div>
-      <svg class="matrix-canvas" id="matrix-svg" viewbox="0 0 1600 940" role="img" aria-label="Original grid and transformed grid under a two by two matrix"></svg>
-    </section>
-  </div>
+app = App(app_ui, server)</code></pre>
 </div>
-
-<script>
-(() => {
-  const playground = document.getElementById("matrix-playground");
-  const svg = document.getElementById("matrix-svg");
-  const inputs = {
-    a: document.getElementById("matrix-a"),
-    b: document.getElementById("matrix-b"),
-    c: document.getElementById("matrix-c"),
-    d: document.getElementById("matrix-d"),
-  };
-  const detEl = document.getElementById("matrix-det");
-  const areaEl = document.getElementById("matrix-area");
-  const orientationEl = document.getElementById("matrix-orientation");
-  const resetButton = document.getElementById("matrix-reset");
-  const fullscreenButton = document.getElementById("matrix-fullscreen");
-  const presetSelect = document.getElementById("matrix-preset");
-
-  const width = 1600;
-  const height = 940;
-  const margin = 8;
-  const gridExtent = 2;
-  const defaultMatrix = [1, 0.6, -0.3, 1];
-  const arrowShape = [
-    [-1.6, -0.475],
-    [0.225, -0.475],
-    [0.225, -0.875],
-    [1.475, 0],
-    [0.225, 0.875],
-    [0.225, 0.475],
-    [-1.6, 0.475],
-  ];
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-
-  function numberFrom(input, fallback) {
-    const value = Number(input.value);
-    return Number.isFinite(value) ? value : fallback;
-  }
-
-  function currentMatrix() {
-    return [
-      numberFrom(inputs.a, 0),
-      numberFrom(inputs.b, 0),
-      numberFrom(inputs.c, 0),
-      numberFrom(inputs.d, 0),
-    ];
-  }
-
-  function applyMatrix(matrix, point) {
-    const [a, b, c, d] = matrix;
-    const [x, y] = point;
-    return [a * x + b * y, c * x + d * y];
-  }
-
-  function identity(point) {
-    return point;
-  }
-
-  function linePoints(transform) {
-    const points = [];
-    for (let i = -gridExtent; i <= gridExtent; i += 1) {
-      points.push(transform([i, -gridExtent]));
-      points.push(transform([i, gridExtent]));
-      points.push(transform([-gridExtent, i]));
-      points.push(transform([gridExtent, i]));
-    }
-    points.push(transform([1, 0]), transform([0, 1]));
-    points.push(...arrowShape.map(transform));
-    return points;
-  }
-
-  function sharedScale(panel, transforms) {
-    const points = transforms.flatMap((transform) => linePoints(transform));
-    const maxX = Math.max(1, ...points.map(([x]) => Math.abs(x)));
-    const maxY = Math.max(1, ...points.map(([, y]) => Math.abs(y)));
-    return Math.min((panel.width - 2 * margin) / (2 * maxX), (panel.height - 2 * margin) / (2 * maxY));
-  }
-
-  function viewport(panel, scale) {
-    return {
-      project([x, y]) {
-        return [
-          panel.x + panel.width / 2 + x * scale,
-          panel.y + panel.height / 2 - y * scale,
-        ];
-      },
-    };
-  }
-
-  function svgEl(name, attrs = {}) {
-    const node = document.createElementNS("http://www.w3.org/2000/svg", name);
-    for (const [key, value] of Object.entries(attrs)) {
-      node.setAttribute(key, value);
-    }
-    return node;
-  }
-
-  function addLine(group, view, p1, p2, attrs) {
-    const [x1, y1] = view.project(p1);
-    const [x2, y2] = view.project(p2);
-    group.appendChild(svgEl("line", { x1, y1, x2, y2, ...attrs }));
-  }
-
-  function addPolyline(group, view, points, attrs) {
-    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
-    group.appendChild(svgEl("polyline", { points: projected, ...attrs }));
-  }
-
-  function addPolygon(group, view, points, attrs) {
-    const projected = points.map((point) => view.project(point).map((x) => x.toFixed(2)).join(",")).join(" ");
-    group.appendChild(svgEl("polygon", { points: projected, ...attrs }));
-  }
-
-  function addArrowVector(group, view, start, end, color, label) {
-    addLine(group, view, start, end, {
-      stroke: color,
-      "stroke-width": 5.2,
-      "stroke-linecap": "round",
-      "marker-end": `url(#arrow-${color.slice(1)})`,
-    });
-
-    const [x, y] = view.project(end);
-    const text = svgEl("text", {
-      x: x + 12,
-      y: y - 12,
-      fill: color,
-      "font-size": 24,
-      "font-weight": 760,
-    });
-    text.textContent = label;
-    group.appendChild(text);
-  }
-
-  function marker(color) {
-    return `
-      <marker id="arrow-${color.slice(1)}" markerWidth="11" markerHeight="11" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-        <path d="M0,0 L0,6 L8,3 z" fill="${color}" />
-      </marker>
-    `;
-  }
-
-  function drawPanelFrame(group, panel, title) {
-    group.appendChild(svgEl("rect", {
-      x: panel.x,
-      y: panel.y,
-      width: panel.width,
-      height: panel.height,
-      rx: 18,
-      fill: "#ffffff",
-      stroke: "#d6dde8",
-      "stroke-width": 2,
-    }));
-
-    const label = svgEl("text", {
-      x: panel.x + 24,
-      y: panel.y + 42,
-      fill: "#111827",
-      "font-size": 28,
-      "font-weight": 760,
-    });
-    label.textContent = title;
-    group.appendChild(label);
-  }
-
-  function drawGrid(group, view, transform, verticalColor, horizontalColor, baseOpacity) {
-    for (let i = -gridExtent; i <= gridExtent; i += 1) {
-      const strong = i === 0;
-      addLine(group, view, transform([i, -gridExtent]), transform([i, gridExtent]), {
-        stroke: strong ? verticalColor.strong : verticalColor.light,
-        "stroke-width": strong ? 3.6 : 2,
-        opacity: strong ? 0.95 : baseOpacity,
-      });
-      addLine(group, view, transform([-gridExtent, i]), transform([gridExtent, i]), {
-        stroke: strong ? horizontalColor.strong : horizontalColor.light,
-        "stroke-width": strong ? 3.6 : 2,
-        opacity: strong ? 0.95 : baseOpacity,
-      });
-    }
-  }
-
-  function drawShapePanel(group, panel, title, transform, view, options) {
-    drawPanelFrame(group, panel, title);
-    drawGrid(group, view, transform, options.verticalColor, options.horizontalColor, options.gridOpacity);
-
-    addPolygon(group, view, arrowShape.map(transform), {
-      fill: options.arrowFill,
-      stroke: options.arrowStroke,
-      "stroke-width": 5,
-      "stroke-linejoin": "round",
-    });
-
-    const square = [
-      transform([0, 0]),
-      transform([1, 0]),
-      transform([1, 1]),
-      transform([0, 1]),
-      transform([0, 0]),
-    ];
-    addPolyline(group, view, square, {
-      fill: "rgba(21, 154, 138, 0.14)",
-      stroke: "#159a8a",
-      "stroke-width": 3.6,
-      "stroke-linejoin": "round",
-    });
-
-    addArrowVector(group, view, transform([0, 0]), transform([1, 0]), "#159a8a", options.e1Label);
-    addArrowVector(group, view, transform([0, 0]), transform([0, 1]), "#b45309", options.e2Label);
-
-    const origin = view.project(transform([0, 0]));
-    group.appendChild(svgEl("circle", {
-      cx: origin[0],
-      cy: origin[1],
-      r: 6,
-      fill: "#111827",
-    }));
-  }
-
-  function render() {
-    const matrix = currentMatrix();
-    const [a, b, c, d] = matrix;
-    const det = a * d - b * c;
-    const leftPanel = { x: 16, y: 16, width: 764, height: 908 };
-    const rightPanel = { x: 820, y: 16, width: 764, height: 908 };
-    const matrixTransform = (point) => applyMatrix(matrix, point);
-    const scale = sharedScale(leftPanel, [identity, matrixTransform]);
-    const originalView = viewport(leftPanel, scale);
-    const transformedView = viewport(rightPanel, scale);
-
-    svg.innerHTML = `
-      <defs>
-        ${marker("#159a8a")}
-        ${marker("#b45309")}
-      </defs>
-      <rect width="${width}" height="${height}" fill="#ffffff"></rect>
-    `;
-
-    const originalPanel = svgEl("g");
-    const transformedPanel = svgEl("g");
-    svg.append(originalPanel, transformedPanel);
-
-    drawShapePanel(originalPanel, leftPanel, "Original", identity, originalView, {
-      verticalColor: { strong: "#9aa4b2", light: "#cfd6e3" },
-      horizontalColor: { strong: "#9aa4b2", light: "#cfd6e3" },
-      gridOpacity: 0.92,
-      arrowFill: "rgba(107, 114, 128, 0.12)",
-      arrowStroke: "#6b7280",
-      e1Label: "e1",
-      e2Label: "e2",
-    });
-
-    drawShapePanel(transformedPanel, rightPanel, "Transformed by A", matrixTransform, transformedView, {
-      verticalColor: { strong: "#184fa3", light: "#2f6fdd" },
-      horizontalColor: { strong: "#b45309", light: "#e07a2f" },
-      gridOpacity: 0.88,
-      arrowFill: "rgba(124, 58, 237, 0.2)",
-      arrowStroke: "#7c3aed",
-      e1Label: "Ae1",
-      e2Label: "Ae2",
-    });
-
-    detEl.textContent = det.toFixed(3);
-    areaEl.textContent = Math.abs(det).toFixed(3);
-    orientationEl.textContent =
-      Math.abs(det) < 1e-9 ? "collapsed" : det > 0 ? "preserved" : "reversed";
-
-  }
-
-  function setMatrix(values) {
-    [inputs.a.value, inputs.b.value, inputs.c.value, inputs.d.value] = values;
-    render();
-  }
-
-  Object.values(inputs).forEach((input) => input.addEventListener("input", render));
-  presetSelect.addEventListener("change", () => {
-    if (presetSelect.value) {
-      setMatrix(presetSelect.value.split(",").map(Number));
-      presetSelect.value = "";
-    }
-  });
-  resetButton.addEventListener("click", () => setMatrix(defaultMatrix));
-  fullscreenButton.addEventListener("click", async () => {
-    if (!document.fullscreenElement) {
-      await playground.requestFullscreen();
-      fullscreenButton.textContent = "Exit fullscreen";
-    } else {
-      await document.exitFullscreen();
-      fullscreenButton.textContent = "Fullscreen";
-    }
-  });
-  document.addEventListener("fullscreenchange", () => {
-    fullscreenButton.textContent = document.fullscreenElement ? "Exit fullscreen" : "Fullscreen";
-  });
-
-  render();
-})();
-</script>
 
 
 

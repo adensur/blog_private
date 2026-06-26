@@ -4,10 +4,16 @@ This folder is a Quarto website for working notes on physics and mathematics.
 
 ## Local workflow
 
+Install the Python packages used by executable Quarto chunks:
+
+```bash
+python3 -m pip install --user --break-system-packages -r requirements.txt
+```
+
 Render the static site:
 
 ```bash
-~/.local/bin/quarto render
+quarto render
 ```
 
 Open the rendered journal:
@@ -19,20 +25,12 @@ open ../../docs/index.html
 For a live preview while writing:
 
 ```bash
-~/.local/bin/quarto preview
+quarto preview
 ```
 
-Regenerate the transformation figure:
+The matrix playground is embedded with Shinylive, so its app code is Python but runs in the browser. Use `quarto preview` when editing so the local web server can serve the generated Shinylive assets.
 
-```bash
-python3 scripts/generate_transformation_figures.py
-```
-
-On this machine, Quarto was also installed without `sudo` at:
-
-```bash
-~/.local/bin/quarto
-```
+If a fresh terminal cannot find `quarto`, reload the shell with `source ~/.zshrc`.
 
 ## GitHub Pages
 

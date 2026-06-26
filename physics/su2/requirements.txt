@@ -1,0 +1,7 @@
+jupyter
+ipykernel
+matplotlib
+numpy
+shiny
+shinylive
+shinywidgets
